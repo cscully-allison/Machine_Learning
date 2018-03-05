@@ -1,180 +1,69 @@
-import csv
 import numpy as np
-import random
-
-MAX_ITERATIONS = 100
-
-
-def ReadInData(source):
-    TextValues = [] #row major matrix representing the set of all data points we will be grouping
-    FloatValues = []
-    DtMappings = [] #mappings of date time values to thier associated row of data in the object set
-
-    with open(source, 'rt') as csvfile:
-        reader = csv.reader(csvfile)
-        for row in reader:
-            if '' not in row: #throw out rows with missing data
-                DtMappings.append(row[0])
-                TextValues.append(row[1:len(row)])
-
-
-    TextValues = np.array(TextValues)
-
-    FloatValues = TextValues.astype(np.float)
-
-    return {"DTMappings": DtMappings, "DataFrame": FloatValues}
-
-#def SRFKM():
-
-#def FKM(DataMatrix, NumClusters):
-
-
-def Convergence(OldCentrioids, centroids, iterations):
-    if iterations > MAX_ITERATIONS:
-        return True
-    return np.array_equal(OldCentrioids, centroids)
-
-
-def GetMembership(DataMatrix, Centroids):
-    MinDist = float('Inf')
-    MinCentroid = []
-    Memberships = []
-    SumBuffer = 0.0
-
-    for index, row in enumerate(DataMatrix): #for each object in my data matrix
-        for cindex, centroid in enumerate(Centroids): #calculate the distance to each centroid
-            #here we get the eucledean distances between our centroid and objects
-            for column in range(0, DataMatrix.shape[1]):
-                SumBuffer += ( (centroid[column] - row[column]) ** 2 )
-
-            #Square our SumBuffer and store the new minimum distance and Minimum
-            # centroid if needed
-            #We will use the stored centroid for assignment after all have been compared
-            SumBuffer = np.sqrt(SumBuffer)
-            if(SumBuffer < MinDist):#def SRFKM():
-
-#def FKM(DataMatrix, NumClusters):
-                MinDist = SumBuffer
-                MinCentroid = cindex
-
-        Memberships.append({"ObjectRow": index, "Centroid": MinCentroid})
-
-        #reset for next row/"object"
-        SumBuffer = 0.0
-        MinDist = float('Inf')
-        MinCentroid = []
-
-
-    return Memberships
-
-
-def GetMean(Vectors):
-    MeanVector = []
-    NumFeatures = Vectors.shape[1]
-    NumVectors = Vectors.shape[0]
-
-    for feature in range(0, NumFeatures):
-        Sum = 0
-        for vector in Vectors:
-            Sum += vector[feature]
-
-        MeanVector.append(Sum/NumVectors)
-
-    return MeanVector
 
 
 
 
-def GetCentroids(DataMatrix, Memberships, KClusters):
-    Centroids = []
-    MeanBuffer = np.empty((0, DataMatrix.shape[1]), float)
-    NewCentroid = None
-
-    #load a cluster of associated vectors together into an easily
-    # collapasable matrix to find a mean for the centroid
-    for centroid in range(0,KClusters):
-        for membership in Memberships:
-            if(membership["Centroid"] == centroid):
-                MeanBuffer = np.vstack([MeanBuffer, DataMatrix[ membership["ObjectRow"] ]])
-
-        #check to ensure that our cetnroid has some objects
-        #connected to it
-        #Else choose a new random centroid
-        if MeanBuffer.shape[0] != 0:
-            NewCentroid = GetMean(MeanBuffer)
-        else:
-            NewCentroid = DataMatrix[random.randint(0,DataMatrix.shape[0])]
-
-        Centroids.append(NewCentroid)
-
-        MeanBuffer = np.empty((0, DataMatrix.shape[1]), float)
-
-    return Centroids
+# v = centroids, s= is matrix holding s aux vars, and u is membership matrix
+def FindCentroids(DataMatrix, V, S, U):
+    tempCentroid = np.zeros([DataMatrix.shape[1]])
+    SummedDenom = 0.0 #this is the buffer for the denomonator of our vector centroid function
+    Scalar = 0.0
 
 
-#Initialize KCluster vectors of length numfeatures to act as our centroids
-def GetRandomCentroids(DataMatrix, NumFeatures, KClusters):
-    Centroids = [];
+    #for each centroid
+    for k, vk in enumerate(V):
+        #for each item in the data matrix
+        for i, row in enumerate(DataMatrix):
+            Scalar = S[i][k] * U[i][k] #get the scalar we are multiplying our x_i by
 
-    for vect in range(0,KClusters):
-        Centroids.append( DataMatrix[random.randint(0,DataMatrix.shape[0])] )
+            #multiply our scalar against data matrix vector i
+            # and add the result to temp centroid f
+            for f, feature in enumerate(vk):
+                tempCentroid[f] += Scalar * DataMatrix[i][f]
 
-    Centroids = np.array(Centroids)
+            #keep track of our denomonator sum
+            SummedDenom += Scalar
 
-    return Centroids
-
-
-
-def KM(DataMatrix, KClusters):
-    Centroids = None
-    Memberships = []
-    DMShape = DataMatrix.shape
-    NumFeatures = DMShape[1]
-
-    #bookeeping vars
-    Iterations = 0
-    OldCentrioids = None
-
-    #Initialize centroids
-    Centroids = GetRandomCentroids(DataMatrix, NumFeatures, KClusters)
-
-    #while not convergence
-    while not Convergence(OldCentrioids, Centroids, Iterations):
-        OldCentrioids = Centroids
-        Iterations += 1
-
-        Memberships = GetMembership(DataMatrix, Centroids)
-        Centroids = GetCentroids(DataMatrix, Memberships, KClusters)
-
-        print(Iterations)
+        #divide our centroid vector by the denomonator we computed
+        tempCentroid = np.multiply(tempCentroid, 1/SummedDenom)
 
 
-    #counts number of members in each cluster
-    counts = [0] * KClusters
+        #iterate over number of features in our Vectors jsut to copy one to the other
+        V[k] = np.copy(tempCentroid)
 
-    for Row in Memberships:
-        for ndx, Centroid in enumerate(Centroids):
-            if( Row["Centroid"] == ndx ):
-                counts[ndx] += 1
+        #reset our temp centroid
+        tempCentroid = np.zeros([DataMatrix.shape[1]])
+        SummedDenom = 0.0
 
 
-    #Should print out the membership counts of each cluster
-    for ndx, count in enumerate(counts):
-        print("Centroid {}, Members: {}".format(ndx, count))
+    return V
 
 
 
 
+# Function: RSFKM
+# Description: Robust and Sparse Fuzzy K-Means Algorithim (to be implemented and modified for data imputation)
+# Parameter 1: DataMatrix [NumPy Array] : An array contianing all my Data values (Rows are items, cols are features)
+# Parameter 2: KClusters [int] : The number of clusters we are grouping into
+# Parameter 3: RegParam [float] : A regularization parameter that puts a restriction on the minimum distance between a data point
+#                                  and a cluster's center and prevents membership from having extreme values, 0 and 1
+# Parameter 4: ThresholdValue [float] : Controls the number of outliers.  If the residual of a sample to centroid is larger than <ThresholdValue>,
+#                                       it is re-garded as outlier and not used to learn centroid matrix V since the corresponding s_ik is zero"
+def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
+    #variables
+    Centroids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float) #corresponds to V in paper
 
-def main():
-    Data = None
-    DataValues = None
+    MembershipMatrix = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #should be of shape i rows and k columns; corresponds to U in paper
+    MatrixH = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #derived from our s aux variable
+    S = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #holds our calulated s_ik
+    TimeStep = 0
 
-    Data = ReadInData("data.csv")
-    DataValues = Data["DataFrame"]
+    print(type(MembershipMatrix))
 
+    #initalization
+    for rndx, row in enumerate(DataMatrix):
+        for col in range(0, KClusters):
+            MembershipMatrix[rndx][col] = float(1/KClusters) #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
+            S[rndx][col] = 1
 
-    KM(DataValues,6)
-
-
-main();
+    Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
