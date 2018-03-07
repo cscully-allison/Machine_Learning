@@ -24,11 +24,6 @@ def ReadInData(source):
 
     return {"DTMappings": DtMappings, "DataFrame": FloatValues}
 
-#def SRFKM():
-
-#def FKM(DataMatrix, NumClusters):
-
-
 
 
 def main():
@@ -40,7 +35,7 @@ def main():
 
 
     #KM(DataValues,20)
-    RSFKM(DataValues, 5, 0.5, 1)
+    RSFKM(DataValues, 5, 0.5, 3)
 
 
 main();
