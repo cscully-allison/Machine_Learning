@@ -26,9 +26,7 @@ def GetMembership(DataMatrix, Centroids):
             # centroid if needed
             #We will use the stored centroid for assignment after all have been compared
             SumBuffer = np.sqrt(SumBuffer)
-            if(SumBuffer < MinDist):#def SRFKM():
-
-#def FKM(DataMatrix, NumClusters):
+            if(SumBuffer < MinDist):
                 MinDist = SumBuffer
                 MinCentroid = cindex
 

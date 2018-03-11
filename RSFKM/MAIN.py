@@ -24,18 +24,25 @@ def ReadInData(source):
 
     return {"DTMappings": DtMappings, "DataFrame": FloatValues}
 
+def CleanData(DataValues):
+    for row in DataValues:
+        for col in row:
+            if col is None:
+                print "ajksff"
+
 
 
 def main():
     Data = None
     DataValues = None
 
-    Data = ReadInData("smoldata.csv")
+    Data = ReadInData("data.csv")
     DataValues = Data["DataFrame"]
 
+    CleanData(DataValues)
 
     #KM(DataValues,20)
-    RSFKM(DataValues, 5, 0.5, 3)
+    RSFKM(DataValues, 10, 0.5, 3)
 
 
 main();

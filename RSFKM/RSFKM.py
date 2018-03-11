@@ -23,11 +23,17 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
 
     for i, Ui in enumerate(MembershipMatrix):
         h_tilde.value = np.multiply(H[i], ( -1/(2*RegParam) ))
-        objective = Minimize( square( norm( Ux - h_tilde ) ) )
+        expression = square( norm( Ux - h_tilde ) )
+        objective = Minimize(expression)
         prob = Problem(objective, constraints)
-        prob.solve()
+        prob.solve(solver=ECOS_BB)
 
-        MembershipMatrix[i] = Ux.value[0]
+        if Ux.value is not None:
+            MembershipMatrix[i] = Ux.value[0]
+            #print "Solution ", prob.value, "Solution Value", Ux.value, "H part", h_tilde.value
+        else:
+            print "No solution", Ux.value, prob.value, prob.status, h_tilde.value
+
 
 
 
@@ -112,11 +118,9 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
     Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
     print MembershipMatrix
 
-    for i in range(0,50):
-
-        UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam)
-        Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
-        print Centroids[0]
-        UpdateS(DataMatrix, Centroids, S, ThresholdValue)
+    #for i in range(0,7):
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam)
+    Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
+    UpdateS(DataMatrix, Centroids, S, ThresholdValue)
 
     print MembershipMatrix
