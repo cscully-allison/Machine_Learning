@@ -2,6 +2,12 @@ import numpy as np
 import numpy.linalg as la
 from cvxpy import *
 
+MAX_ITERATIONS = 3
+
+def Convergence(OldCentrioids, centroids, iterations):
+    if iterations > MAX_ITERATIONS:
+        return True
+    return np.allclose(OldCentrioids, centroids, rtol=1e-05)
 
 
 def GetHMatrix(DataMatrix, H, S, V):
@@ -14,26 +20,33 @@ def GetHMatrix(DataMatrix, H, S, V):
 def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam):
     GetHMatrix(DataMatrix, H, S, Centroids)
 
+    #print DataMatrix
+
     #minimization solving
     #This part essentially corresponds to formula 14
     Ux = Variable(MembershipMatrix.shape[1])
     h_tilde = Parameter(H.shape[1])
 
+    #constraints = [ sum(Ux) == 1 ]
     constraints = [ 0 <= Ux, sum(Ux) == 1]
 
     for i, Ui in enumerate(MembershipMatrix):
         h_tilde.value = np.multiply(H[i], ( -1/(2*RegParam) ))
         expression = square( norm( Ux - h_tilde ) )
         objective = Minimize(expression)
+
         prob = Problem(objective, constraints)
-        prob.solve(solver=ECOS_BB)
+        prob.solve()
 
         if Ux.value is not None:
-            MembershipMatrix[i] = Ux.value[0]
+            #print "Value of Ux", Ux.value
+            #print "Value of Ux Transpose", Ux.value.transpose()[0]
+            MembershipMatrix[i] = Ux.value.transpose()[0]
             #print "Solution ", prob.value, "Solution Value", Ux.value, "H part", h_tilde.value
         else:
             print "No solution", Ux.value, prob.value, prob.status, h_tilde.value
 
+    #print "This is the U", MembershipMatrix
 
 
 
@@ -46,33 +59,38 @@ def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
             else:
                 S[i][k] = 1/( la.norm(np.subtract(DataMatrix[i], Centroids[k])) )
 
+    #print "This is the S", S
 
 
 
 
 # v = centroids, s= is matrix holding s aux vars, and u is membership matrix
 def FindCentroids(DataMatrix, V, S, U):
-    tempCentroid = np.zeros([DataMatrix.shape[1]])
     SummedDenom = 0.0 #this is the buffer for the denomonator of our vector centroid function
     Scalar = 0.0
 
     #for each centroid
     for k, vk in enumerate(V):
+        tempCentroid = np.zeros([DataMatrix.shape[1]])
+        #tempCentroid = vk
         #for each item in the data matrix
         for i, row in enumerate(DataMatrix):
             Scalar = S[i][k] * U[i][k] #get the scalar we are multiplying our x_i by
 
+            if Scalar != 0.0:
+
             #multiply our scalar against data matrix vector i
             # and add the result to temp centroid f
-            for f, feature in enumerate(vk):
-                tempCentroid[f] += Scalar * DataMatrix[i][f]
+                for f, feature in enumerate(vk):
+                    tempCentroid[f] += Scalar * DataMatrix[i][f]
 
             #keep track of our denomonator sum
             SummedDenom += Scalar
 
 
         #divide our centroid vector by the denomonator we computed
-        tempCentroid = np.multiply(tempCentroid, 1/SummedDenom)
+        if SummedDenom != 0.0:
+            tempCentroid = np.multiply(tempCentroid, 1/SummedDenom)
 
 
         #iterate over number of features in our Vectors jsut to copy one to the other
@@ -81,7 +99,6 @@ def FindCentroids(DataMatrix, V, S, U):
         #reset our temp centroid
         tempCentroid = np.zeros([DataMatrix.shape[1]])
         SummedDenom = 0.0
-
 
     return V
 
@@ -99,28 +116,44 @@ def FindCentroids(DataMatrix, V, S, U):
 def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
     #variables
     Centroids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float) #corresponds to V in paper
-
     MembershipMatrix = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #should be of shape i rows and k columns; corresponds to U in paper
     MatrixH = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #derived from our s aux variable
     S = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #holds our calulated s_ik
     TimeStep = 0
+    OldCentrioids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float)
 
     #initalization
     for rndx, row in enumerate(DataMatrix):
         for col in range(0, KClusters):
             if col == 0:
-                MembershipMatrix[rndx][col] = 0.9
-            else:
-                MembershipMatrix[rndx][col] = 0.1/KClusters #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
+                MembershipMatrix[rndx][col] = 0.7
+            elif col == 1:
+                MembershipMatrix[rndx][col] = 0.3
+            #else:
+            #    MembershipMatrix[rndx][col] = 0.1 #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
 
             S[rndx][col] = 1
 
-    Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
-    print MembershipMatrix
+    #Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
+    Centroids[0] = [0.0,0.0]
+    Centroids[1] = [10.0,10.0]
 
-    #for i in range(0,7):
-    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam)
-    Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
-    UpdateS(DataMatrix, Centroids, S, ThresholdValue)
+    #print MembershipMatrix
 
-    print MembershipMatrix
+    while not Convergence(OldCentrioids, Centroids, TimeStep):
+        print "Start: ", TimeStep, " "
+
+
+        print "Vo", OldCentrioids, "V1", Centroids, " "
+
+        OldCentrioids = np.copy(Centroids)
+
+        UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam)
+        Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
+        UpdateS(DataMatrix, Centroids, S, ThresholdValue)
+
+        TimeStep += 1
+
+        print MembershipMatrix
+
+        print "End "
