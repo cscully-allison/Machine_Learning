@@ -186,4 +186,4 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
         #print Centroids
 
     #PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
-    return { "U": Centroids, "V": MembershipMatrix }
+    return { "U": MembershipMatrix, "V":Centroids  }
