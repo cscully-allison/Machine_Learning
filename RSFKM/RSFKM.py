@@ -182,4 +182,8 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
 
         TimeStep += 1
 
-    PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
+        #print MembershipMatrix
+        #print Centroids
+
+    #PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
+    return { "U": Centroids, "V": MembershipMatrix }

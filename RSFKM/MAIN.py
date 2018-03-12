@@ -3,6 +3,7 @@ import numpy as np
 import random
 from KM import KM
 from RSFKM import RSFKM
+import matplotlib.pyplot as plt
 
 
 def ReadInData(source):
@@ -35,14 +36,34 @@ def CleanData(DataValues):
 def main():
     Data = None
     DataValues = None
+    UVBundle = None
+    MembershipMatrix = None
+    Centroids = None
+    x = []
+    y = []
 
-    Data = ReadInData("smol1fd.csv")
+    Data = ReadInData("smol2fd.csv")
     DataValues = Data["DataFrame"]
 
     CleanData(DataValues)
 
     #KM(DataValues,20)
-    RSFKM(DataValues, 2, 3, 10)
+
+    UVBundle = RSFKM(DataValues, 2, 3, 10)
+    MembershipMatrix = UVBundle["U"]
+    Centroids = UVBundle["V"]
+
+    for item in DataValues:
+        x.append(item[0])
+        y.append(item[1])
+
+    for centroid in DataValues:
+        x.append(centroid[0])
+        y.append(centroid[1])
+
+
+    plt.plot(x, y)
+
 
 
 main();
