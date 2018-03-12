@@ -1,8 +1,36 @@
 import numpy as np
 import numpy.linalg as la
+import random
 from cvxpy import *
 
-MAX_ITERATIONS = 3
+MAX_ITERATIONS = 5
+
+def PrintMemberships(Centroids, MembershipMatrix, DataMatrix):
+    print "Item, Cluster, Realive Membership [%]"
+    for x, item in enumerate(MembershipMatrix):
+        for v, membership in enumerate(item):
+            if membership > 0.50:
+                print  "{0}, {1}, {2}".format(DataMatrix[x], v, membership*100)
+
+    print "Key: "
+    for v, centroid in enumerate(Centroids):
+        print "Cluster number: ", v, "Centroid: ", centroid, " "
+
+def GetRandomCentroids(DataMatrix, KClusters):
+    Centroids = [];
+    Selection = [];
+
+    for vect in range(0,KClusters):
+
+        Selection = DataMatrix[random.randint(0,DataMatrix.shape[0]-1)]
+        while any((Selection == Centroid).all() for Centroid in Centroids):
+            Selection = DataMatrix[random.randint(0,DataMatrix.shape[0]-1)]
+
+        Centroids.append(Selection)
+
+    Centroids = np.array(Centroids)
+
+    return Centroids
 
 def Convergence(OldCentrioids, centroids, iterations):
     if iterations > MAX_ITERATIONS:
@@ -54,7 +82,9 @@ def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
 
     for i, row in enumerate(S):
         for k, col in enumerate(row):
-            if la.norm(np.subtract(DataMatrix[i], Centroids[k])) > ThresholdValue:
+            if la.norm(np.subtract(DataMatrix[i], Centroids[k])) == 0:
+                S[i][k]
+            elif la.norm(np.subtract(DataMatrix[i], Centroids[k])) > ThresholdValue:
                 S[i][k] = 0
             else:
                 S[i][k] = 1/( la.norm(np.subtract(DataMatrix[i], Centroids[k])) )
@@ -126,25 +156,23 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
     for rndx, row in enumerate(DataMatrix):
         for col in range(0, KClusters):
             if col == 0:
-                MembershipMatrix[rndx][col] = 0.7
+                MembershipMatrix[rndx][col] = 0.9
             elif col == 1:
-                MembershipMatrix[rndx][col] = 0.3
-            #else:
-            #    MembershipMatrix[rndx][col] = 0.1 #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
+                MembershipMatrix[rndx][col] = 0.08
+            else:
+                MembershipMatrix[rndx][col] = 0.0001 #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
 
             S[rndx][col] = 1
 
     #Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
-    Centroids[0] = [0.0,0.0]
-    Centroids[1] = [10.0,10.0]
+    Centroids = GetRandomCentroids(DataMatrix, KClusters)
+    print Centroids
+    #Centroids[0] = [0.0,0.0]
+    #Centroids[1] = [10.0,10.0]
 
-    #print MembershipMatrix
+
 
     while not Convergence(OldCentrioids, Centroids, TimeStep):
-        print "Start: ", TimeStep, " "
-
-
-        print "Vo", OldCentrioids, "V1", Centroids, " "
 
         OldCentrioids = np.copy(Centroids)
 
@@ -154,6 +182,4 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
 
         TimeStep += 1
 
-        print MembershipMatrix
-
-        print "End "
+    PrintMemberships(Centroids, MembershipMatrix, DataMatrix)

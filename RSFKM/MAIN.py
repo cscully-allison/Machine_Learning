@@ -36,13 +36,13 @@ def main():
     Data = None
     DataValues = None
 
-    Data = ReadInData("newdata.csv")
+    Data = ReadInData("smol1fd.csv")
     DataValues = Data["DataFrame"]
 
     CleanData(DataValues)
 
     #KM(DataValues,20)
-    RSFKM(DataValues, 2, .5, 100)
+    RSFKM(DataValues, 2, 3, 10)
 
 
 main();
