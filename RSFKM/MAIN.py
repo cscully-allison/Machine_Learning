@@ -1,9 +1,11 @@
+import operator
 import csv
 import numpy as np
 import random
 from KM import KM
 from RSFKM import RSFKM
 import matplotlib.pyplot as plt
+
 
 
 def ReadInData(source):
@@ -20,7 +22,12 @@ def ReadInData(source):
 
 
     TextValues = np.array(TextValues)
-
+    # if MembershipMatrix[xi][v] > 0.9:
+            #     vx.append(item[0])
+            #     vy.append(item[1])
+            # elif MembershipMatrix[xi][v] > 0.5:
+            #     x.append(item[0])
+            #     y.append(item[1])
     FloatValues = TextValues.astype(np.float)
 
     return {"DTMappings": DtMappings, "DataFrame": FloatValues}
@@ -41,8 +48,12 @@ def main():
     Centroids = None
     x = []
     y = []
-    vx = []
-    vy = []
+    gx = []
+    gy = []
+    bx = []
+    by = []
+    wx = []
+    wy = []
 
     Data = ReadInData("smol2fd.csv")
     DataValues = Data["DataFrame"]
@@ -51,7 +62,7 @@ def main():
 
     #KM(DataValues,20)
 
-    UVBundle = RSFKM(DataValues, 4, 3, 10)
+    UVBundle = RSFKM(DataValues, 10, 3, 10)
     MembershipMatrix = UVBundle["U"]
     Centroids = UVBundle["V"]
 
@@ -59,28 +70,45 @@ def main():
     print Centroids
 
     #build a color profile
-    color = (0.5, 0.0, 0.0)
-    bettercolor = (0.6, 0.0, 0.0)
+    color = (0.3, 0.0, 0.0)
+    bettercolor = (0.3, 0.0, 0.0)
     centroidcolor = (0.0,0.0,0.0)
 
     for v, Centroid in enumerate(Centroids):
         plt.scatter(Centroid[0], Centroid[1], c=centroidcolor, marker="x")
-        centroidcolor = (centroidcolor[0]+.10, centroidcolor[1]+.10,centroidcolor[2]+.10)
-        for xi, item in enumerate(DataValues):
-            if MembershipMatrix[xi][v] > 0.9:
-                vx.append(item[0])
-                vy.append(item[1])
-            elif MembershipMatrix[xi][v] > 0.5:
-                x.append(item[0])
-                y.append(item[1])
-        plt.scatter(vx,vy, c=bettercolor, marker="o")
+        for ui, item in enumerate(MembershipMatrix):
+            index, membership = max(enumerate(item), key=operator.itemgetter(1))
+            #print membership
+            if index == v:
+                if membership > 0.9:
+                    gx.append(DataValues[ui][0])
+                    gy.append(DataValues[ui][1])
+                elif membership > 0.5:
+                    x.append(DataValues[ui][0])
+                    y.append(DataValues[ui][1])
+                elif membership > 0.2:
+                    bx.append(DataValues[ui][0])
+                    by.append(DataValues[ui][1])
+                elif membership >= 0.0:
+                    wx.append(DataValues[ui][0])
+                    wy.append(DataValues[ui][1])
+        plt.scatter(gx,gy, c=bettercolor, marker="o")
         plt.scatter(x, y, c=color, marker=".")
-        x = vx = []
-        y = vy = []
+        plt.scatter(bx, by, c=color, marker=",")
+        plt.scatter(wx, wy, c=(0.0,0.0,0.0), marker="h")
+
+        x = []
+        y = []
+        gx = []
+        gy = []
+        bx = []
+        by = []
+        wx = []
+        wy = []
 
 
-        color = (color[2]+.1,color[0],color[1]+.1)
-        bettercolor = (bettercolor[2]+.1,bettercolor[0],bettercolor[1]+.1)
+        color = (color[2]+.05,color[0],color[1]+.05)
+        bettercolor = (bettercolor[2]+.05,bettercolor[0],bettercolor[1]+.05)
 
 
 

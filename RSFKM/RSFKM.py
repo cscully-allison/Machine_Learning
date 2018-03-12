@@ -3,7 +3,7 @@ import numpy.linalg as la
 import random
 from cvxpy import *
 
-MAX_ITERATIONS = 5
+MAX_ITERATIONS = 15
 
 def PrintMemberships(Centroids, MembershipMatrix, DataMatrix):
     print "Item, Cluster, Realive Membership [%]"
@@ -180,10 +180,13 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
         Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
         UpdateS(DataMatrix, Centroids, S, ThresholdValue)
 
+        print "Iteration ", TimeStep, " complete"
         TimeStep += 1
 
         #print MembershipMatrix
         #print Centroids
 
+
     #PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
+
     return { "U": MembershipMatrix, "V":Centroids  }
