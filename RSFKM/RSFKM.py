@@ -1,9 +1,77 @@
-import numpy as np
-import numpy.linalg as la
+import operator
+import os
+import time
 import random
+import numpy.linalg as la
+import matplotlib.pyplot as plt
+import numpy as np
 from cvxpy import *
 
-MAX_ITERATIONS = 15
+
+
+MAX_ITERATIONS = 30 #greater than 30 iterations tends to not give more clear resolution
+
+def RenderMemberships(DataValues, Centroids, MembershipMatrix, Iteration, OutputDirectory):
+
+
+    x = []
+    y = []
+    gx = []
+    gy = []
+    bx = []
+    by = []
+    wx = []
+    wy = []
+
+    #build a color profile
+    color = (0.3, 0.0, 0.0)
+    bettercolor = (0.3, 0.0, 0.0)
+    centroidcolor = (0.0,0.0,0.0)
+
+    for v, Centroid in enumerate(Centroids):
+        plt.scatter(Centroid[0], Centroid[1], c=color, marker="x")
+        for ui, item in enumerate(MembershipMatrix):
+            index, membership = max(enumerate(item), key=operator.itemgetter(1))
+            #print membership
+            if index == v:
+                if membership > 0.9:
+                    gx.append(DataValues[ui][0])
+                    gy.append(DataValues[ui][1])
+                elif membership > 0.5:
+                    x.append(DataValues[ui][0])
+                    y.append(DataValues[ui][1])
+                elif membership > 0.2:
+                    bx.append(DataValues[ui][0])
+                    by.append(DataValues[ui][1])
+                elif membership >= 0.0:
+                    wx.append(DataValues[ui][0])
+                    wy.append(DataValues[ui][1])
+        plt.scatter(gx,gy, c=bettercolor, marker="o")
+        plt.scatter(x, y, c=color, marker=".")
+        plt.scatter(bx, by, c=color, marker=",")
+        plt.scatter(wx, wy, c=(0.0,0.0,0.0), marker="h")
+
+        x = []
+        y = []
+        gx = []
+        gy = []
+        bx = []
+        by = []
+        wx = []
+        wy = []
+
+
+        color = (color[2]+.05,color[0],color[1]+.05)
+        bettercolor = (bettercolor[2]+.05,bettercolor[0],bettercolor[1]+.05)
+
+
+    if not os.path.isdir(OutputDirectory):
+        os.makedirs(OutputDirectory)
+
+    plt.savefig(OutputDirectory + "/{}_Iteration".format(Iteration))
+    plt.clf()
+
+
 
 def PrintMemberships(Centroids, MembershipMatrix, DataMatrix):
     print "Item, Cluster, Realive Membership [%]"
@@ -102,15 +170,16 @@ def FindCentroids(DataMatrix, V, S, U):
     #for each centroid
     for k, vk in enumerate(V):
         tempCentroid = np.zeros([DataMatrix.shape[1]])
-        #tempCentroid = vk
+
         #for each item in the data matrix
         for i, row in enumerate(DataMatrix):
             Scalar = S[i][k] * U[i][k] #get the scalar we are multiplying our x_i by
 
             if Scalar != 0.0:
 
-            #multiply our scalar against data matrix vector i
-            # and add the result to temp centroid f
+                #multiply our scalar against data matrix vector i
+                # and add the result to temp centroid f
+                #tempCentroid = np.multiply(DataMatrix[i], Scalar)
                 for f, feature in enumerate(vk):
                     tempCentroid[f] += Scalar * DataMatrix[i][f]
 
@@ -127,7 +196,6 @@ def FindCentroids(DataMatrix, V, S, U):
         V[k] = np.copy(tempCentroid)
 
         #reset our temp centroid
-        tempCentroid = np.zeros([DataMatrix.shape[1]])
         SummedDenom = 0.0
 
     return V
@@ -143,7 +211,7 @@ def FindCentroids(DataMatrix, V, S, U):
 #                                  and a cluster's center and prevents membership from having extreme values, 0 and 1
 # Parameter 4: ThresholdValue [float] : Controls the number of outliers.  If the residual of a sample to centroid is larger than <ThresholdValue>,
 #                                       it is re-garded as outlier and not used to learn centroid matrix V since the corresponding s_ik is zero"
-def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
+def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
     #variables
     Centroids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float) #corresponds to V in paper
     MembershipMatrix = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #should be of shape i rows and k columns; corresponds to U in paper
@@ -155,20 +223,19 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
     #initalization
     for rndx, row in enumerate(DataMatrix):
         for col in range(0, KClusters):
-            if col == 0:
-                MembershipMatrix[rndx][col] = 0.9
-            elif col == 1:
-                MembershipMatrix[rndx][col] = 0.08
-            else:
-                MembershipMatrix[rndx][col] = 0.0001 #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
+            MemebershipMatrix = 1/KClusters
+            # if col == 0:
+            #     MembershipMatrix[rndx][col] = 0.9
+            # elif col == 1:
+            #     MembershipMatrix[rndx][col] = 0.08
+            # else:
+            #     MembershipMatrix[rndx][col] = 0.0001 #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
 
             S[rndx][col] = 1
 
     #Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
     Centroids = GetRandomCentroids(DataMatrix, KClusters)
     print Centroids
-    #Centroids[0] = [0.0,0.0]
-    #Centroids[1] = [10.0,10.0]
 
 
 
@@ -183,10 +250,20 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue):
         print "Iteration ", TimeStep, " complete"
         TimeStep += 1
 
-        #print MembershipMatrix
-        #print Centroids
-
-
-    #PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
+        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
     return { "U": MembershipMatrix, "V":Centroids  }
+
+def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue):
+    comparision_vect = []
+
+    #strip away the first feature from n rows and store for later
+    for row in DataMatrix:
+        comparision_vect.append(row[0])
+
+    #perform clustering using all data but only using n-1 features
+
+    #take returned U and V and find the geo average for feature 1 in cluster v^i and use that as our imputed Data
+
+    #compare accuracy of imputed value and real value
+    return
