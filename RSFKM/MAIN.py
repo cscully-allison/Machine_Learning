@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import pycuda.autoinit
+import time
 import pycuda.driver as drv
 import operator
 import csv
@@ -75,7 +76,12 @@ def main():
     #UVBundle = RSFKM(DataValues, 15, 8, 20, OutputDirectory)
 
     #Main Driver of RSFKM (ROBUST AND SPARSE FUZZY K MEANS)
+
+    start = time.time()
     UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory)
+    end = time.time()
+
+    print NumRows, NumCols, NumClusters, (end - start)*1000
 
 
     MembershipMatrix = UVBundle["U"]

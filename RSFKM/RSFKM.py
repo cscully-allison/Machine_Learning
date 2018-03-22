@@ -163,7 +163,7 @@ def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
             elif NormResult > ThresholdValue:
                 S[i][k] = 0
             else:
-                S[i][k] = 1/NormResult 
+                S[i][k] = 1/NormResult
 
     #print "This is the S", S
 
@@ -245,7 +245,7 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
 
     #Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
     Centroids = GetRandomCentroids(DataMatrix, KClusters)
-    print Centroids
+    #print Centroids
 
 
 
@@ -257,10 +257,9 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
         Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
         UpdateS(DataMatrix, Centroids, S, ThresholdValue)
 
-        print "Iteration ", TimeStep, " complete"
         TimeStep += 1
 
-        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
+#        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
     return { "U": MembershipMatrix, "V":Centroids  }
 
