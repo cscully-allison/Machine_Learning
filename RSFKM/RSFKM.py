@@ -261,7 +261,7 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
 
 #        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
-    return { "U": MembershipMatrix, "V":Centroids  }
+    return { "U": MembershipMatrix, "V":Centroids, "Iter":TimeStep  }
 
 def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue):
     comparision_vect = []

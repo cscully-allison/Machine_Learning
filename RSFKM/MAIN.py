@@ -81,14 +81,14 @@ def main():
     UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory)
     end = time.time()
 
-    print NumRows, NumCols, NumClusters, (end - start)*1000
+    print "{},{},{},{},{}".format( UVBundle["Iter"], NumRows, NumCols, NumClusters, ((end - start)*1000), ((end - start)*1000)/UVBundle["Iter"] )
 
 
     MembershipMatrix = UVBundle["U"]
     Centroids = UVBundle["V"]
 
     #print MembershipMatrix
-    print Centroids
+    #print Centroids
     #PrintMemberships(Centroids,MembershipMatrix,DataValues)
     #RenderMemberships(DataValues, Centroids, MembershipMatrix, 0, OutputDirectory)
 
