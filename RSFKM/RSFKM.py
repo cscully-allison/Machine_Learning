@@ -3,7 +3,7 @@ import os
 import time
 import random
 import numpy.linalg as la
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 from cvxpy import *
 
@@ -12,64 +12,63 @@ from cvxpy import *
 MAX_ITERATIONS = 30 #greater than 30 iterations tends to not give more clear resolution
 
 def RenderMemberships(DataValues, Centroids, MembershipMatrix, Iteration, OutputDirectory):
-
-
-    x = []
-    y = []
-    gx = []
-    gy = []
-    bx = []
-    by = []
-    wx = []
-    wy = []
-
-    #build a color profile
-    color = (0.3, 0.0, 0.0)
-    bettercolor = (0.3, 0.0, 0.0)
-    centroidcolor = (0.0,0.0,0.0)
-
-    for v, Centroid in enumerate(Centroids):
-        plt.scatter(Centroid[0], Centroid[1], c=color, marker="x")
-        for ui, item in enumerate(MembershipMatrix):
-            index, membership = max(enumerate(item), key=operator.itemgetter(1))
-            #print membership
-            if index == v:
-                if membership > 0.9:
-                    gx.append(DataValues[ui][0])
-                    gy.append(DataValues[ui][1])
-                elif membership > 0.5:
-                    x.append(DataValues[ui][0])
-                    y.append(DataValues[ui][1])
-                elif membership > 0.2:
-                    bx.append(DataValues[ui][0])
-                    by.append(DataValues[ui][1])
-                elif membership >= 0.0:
-                    wx.append(DataValues[ui][0])
-                    wy.append(DataValues[ui][1])
-        plt.scatter(gx,gy, c=bettercolor, marker="o")
-        plt.scatter(x, y, c=color, marker=".")
-        plt.scatter(bx, by, c=color, marker=",")
-        plt.scatter(wx, wy, c=(0.0,0.0,0.0), marker="h")
-
-        x = []
-        y = []
-        gx = []
-        gy = []
-        bx = []
-        by = []
-        wx = []
-        wy = []
-
-
-        color = (color[2]+.05,color[0],color[1]+.05)
-        bettercolor = (bettercolor[2]+.05,bettercolor[0],bettercolor[1]+.05)
-
-
-    if not os.path.isdir(OutputDirectory):
-        os.makedirs(OutputDirectory)
-
-    plt.savefig(OutputDirectory + "/{}_Iteration".format(Iteration))
-    plt.clf()
+    # y = []
+    # x = []
+    # gx = []
+    # gy = []
+    # bx = []
+    # by = []
+    # wx = []
+    # wy = []
+    #
+    # #build a color profile
+    # color = (0.3, 0.0, 0.0)
+    # bettercolor = (0.3, 0.0, 0.0)
+    # centroidcolor = (0.0,0.0,0.0)
+    #
+    # for v, Centroid in enumerate(Centroids):
+    #     plt.scatter(Centroid[0], Centroid[1], c=color, marker="x")
+    #     for ui, item in enumerate(MembershipMatrix):
+    #         index, membership = max(enumerate(item), key=operator.itemgetter(1))
+    #         #print membership
+    #         if index == v:
+    #             if membership > 0.9:
+    #                 gx.append(DataValues[ui][0])
+    #                 gy.append(DataValues[ui][1])
+    #             elif membership > 0.5:
+    #                 x.append(DataValues[ui][0])
+    #                 y.append(DataValues[ui][1])
+    #             elif membership > 0.2:
+    #                 bx.append(DataValues[ui][0])
+    #                 by.append(DataValues[ui][1])
+    #             elif membership >= 0.0:
+    #                 wx.append(DataValues[ui][0])
+    #                 wy.append(DataValues[ui][1])
+    #     plt.scatter(gx,gy, c=bettercolor, marker="o")
+    #     plt.scatter(x, y, c=color, marker=".")
+    #     plt.scatter(bx, by, c=color, marker=",")
+    #     plt.scatter(wx, wy, c=(0.0,0.0,0.0), marker="h")
+    #
+    #     x = []
+    #     y = []
+    #     gx = []
+    #     gy = []
+    #     bx = []
+    #     by = []
+    #     wx = []
+    #     wy = []
+    #
+    #
+    #     color = (color[2]+.05,color[0],color[1]+.05)
+    #     bettercolor = (bettercolor[2]+.05,bettercolor[0],bettercolor[1]+.05)
+    #
+    #
+    # if not os.path.isdir(OutputDirectory):
+    #     os.makedirs(OutputDirectory)
+    #
+    # plt.savefig(OutputDirectory + "/{}_Iteration".format(Iteration))
+    # plt.clf()
+    return
 
 
 
@@ -105,14 +104,14 @@ def Convergence(OldCentrioids, centroids, iterations):
         return True
     return np.allclose(OldCentrioids, centroids, rtol=1e-05)
 
-
+@profile
 def GetHMatrix(DataMatrix, H, S, V):
     for i, row in enumerate(DataMatrix):
         for k, centroid in enumerate(V):
             H[i][k] = S[i][k] * (la.norm(np.subtract(row, centroid)) ** 2)
 
 
-
+@profile
 def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam):
     GetHMatrix(DataMatrix, H, S, Centroids)
 
@@ -123,7 +122,6 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
     Ux = Variable(MembershipMatrix.shape[1])
     h_tilde = Parameter(H.shape[1])
 
-    #constraints = [ sum(Ux) == 1 ]
     constraints = [ 0 <= Ux, sum(Ux) == 1]
 
     for i, Ui in enumerate(MembershipMatrix):
@@ -132,7 +130,15 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
         objective = Minimize(expression)
 
         prob = Problem(objective, constraints)
-        prob.solve()
+
+        # if i in range(0,10):
+        #     data = prob.get_problem_data(ECOS)
+        #     print "Ux size: ", MembershipMatrix.shape[1]
+        #     print "A: ", data["A"]
+        #     print "G: ", data["G"]
+        #     print data
+
+        prob.solve(solver=ECOS)
 
         if Ux.value is not None:
             #print "Value of Ux", Ux.value
@@ -145,17 +151,19 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
     #print "This is the U", MembershipMatrix
 
 
-
+@profile
 def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
+    NormResult = None
 
     for i, row in enumerate(S):
         for k, col in enumerate(row):
-            if la.norm(np.subtract(DataMatrix[i], Centroids[k])) == 0:
+            NormResult = la.norm(np.subtract(DataMatrix[i], Centroids[k]))
+            if NormResult == 0:
                 S[i][k]
-            elif la.norm(np.subtract(DataMatrix[i], Centroids[k])) > ThresholdValue:
+            elif NormResult > ThresholdValue:
                 S[i][k] = 0
             else:
-                S[i][k] = 1/( la.norm(np.subtract(DataMatrix[i], Centroids[k])) )
+                S[i][k] = 1/NormResult 
 
     #print "This is the S", S
 
@@ -163,6 +171,7 @@ def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
 
 
 # v = centroids, s= is matrix holding s aux vars, and u is membership matrix
+@profile
 def FindCentroids(DataMatrix, V, S, U):
     SummedDenom = 0.0 #this is the buffer for the denomonator of our vector centroid function
     Scalar = 0.0
@@ -211,6 +220,7 @@ def FindCentroids(DataMatrix, V, S, U):
 #                                  and a cluster's center and prevents membership from having extreme values, 0 and 1
 # Parameter 4: ThresholdValue [float] : Controls the number of outliers.  If the residual of a sample to centroid is larger than <ThresholdValue>,
 #                                       it is re-garded as outlier and not used to learn centroid matrix V since the corresponding s_ik is zero"
+
 def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
     #variables
     Centroids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float) #corresponds to V in paper
@@ -223,13 +233,13 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
     #initalization
     for rndx, row in enumerate(DataMatrix):
         for col in range(0, KClusters):
-            MemebershipMatrix = 1/KClusters
-            # if col == 0:
-            #     MembershipMatrix[rndx][col] = 0.9
-            # elif col == 1:
-            #     MembershipMatrix[rndx][col] = 0.08
-            # else:
-            #     MembershipMatrix[rndx][col] = 0.0001 #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
+            #MemebershipMatrix = 1/KClusters
+            if col == 0:
+                MembershipMatrix[rndx][col] = 0.9
+            elif col == 1:
+                MembershipMatrix[rndx][col] = 0.08
+            else:
+                MembershipMatrix[rndx][col] = 0.0001 #this needs to be fixed to enforce constraint of U1 = 1 in cases of odd number of clusters like 3
 
             S[rndx][col] = 1
 

@@ -1,10 +1,15 @@
+#!/usr/bin/env python
+import pycuda.autoinit
+import pycuda.driver as drv
 import operator
 import csv
 import numpy as np
 import random
 import sys
+from pycuda.compiler import SourceModule
 from KM import KM
-from RSFKM import RSFKM, RenderMemberships
+from RSFKM import RSFKM, RenderMemberships, PrintMemberships
+
 
 """Collect command-line options in a dictionary"""
 
@@ -17,17 +22,24 @@ def getopts(argv):
     return opts
 
 
-def ReadInData(source):
+def ReadInData(source, DTColFlag, NumRows, NumCols):
     TextValues = [] #row major matrix representing the set of all data points we will be grouping
     FloatValues = []
     DtMappings = [] #mappings of date time values to thier associated row of data in the object set
 
     with open(source, 'rt') as csvfile:
         reader = csv.reader(csvfile)
-        for row in reader:
+        for i, row in enumerate(reader):
+            if len(row) < NumCols+1:
+                NumCols = len(row)
             if '' not in row: #throw out rows with missing data
-                DtMappings.append(row[0])
-                TextValues.append(row[1:len(row)])
+                if DTColFlag is 1:
+                    DtMappings.append(row[0])
+                    TextValues.append(row[1:NumCols+1])
+                else:
+                    TextValues.append(row)
+            if i > NumRows:
+                break
 
 
     TextValues = np.array(TextValues)
@@ -51,26 +63,28 @@ def main():
     DataSource = Args["-i"]
     OutputDirectory = Args["-o"]
     NumClusters = int(Args["-k"])
-    RegParam = int(Args["-r"])
-    ThresholdValue = int(Args["-t"])
+    RegParam = float(Args["-r"])
+    ThresholdValue = float(Args["-t"])
+    DTColFlag = int(Args["-l"])
+    NumRows = int(Args["-rw"])
+    NumCols =  int(Args["-c"])
 
-    print Args
-
-    Data = ReadInData(DataSource)
+    Data = ReadInData(DataSource, DTColFlag, NumRows, NumCols)
     DataValues = Data["DataFrame"]
 
-    #CleanData(DataValues)
-
-    #KM(DataValues,20)
-
     #UVBundle = RSFKM(DataValues, 15, 8, 20, OutputDirectory)
+
+    #Main Driver of RSFKM (ROBUST AND SPARSE FUZZY K MEANS)
     UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory)
+
+
     MembershipMatrix = UVBundle["U"]
     Centroids = UVBundle["V"]
 
     #print MembershipMatrix
     print Centroids
-    RenderMemberships(DataValues, Centroids, MembershipMatrix, 0, OutputDirectory)
+    #PrintMemberships(Centroids,MembershipMatrix,DataValues)
+    #RenderMemberships(DataValues, Centroids, MembershipMatrix, 0, OutputDirectory)
 
 
 
