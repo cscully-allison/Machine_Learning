@@ -1,0 +1,121 @@
+Timer unit: 1e-06 s
+
+Total time: 52.8776 s
+File: ./RSFKM.py
+Function: GetHMatrix at line 107
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   107                                           @profile
+   108                                           def GetHMatrix(DataMatrix, H, S, V):
+   109    507997     556044.0      1.1      1.1      for i, row in enumerate(DataMatrix):
+   110   2539830    4609507.0      1.8      8.7          for k, centroid in enumerate(V):
+   111   2031864   47712095.0     23.5     90.2              H[i][k] = S[i][k] * (la.norm(np.subtract(row, centroid)) ** 2)
+
+Total time: 6370.88 s
+File: ./RSFKM.py
+Function: UpdateMembershipMatrix at line 114
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   114                                           @profile
+   115                                           def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam):
+   116        31   55894805.0 1803058.2      0.9      GetHMatrix(DataMatrix, H, S, Centroids)
+   117                                           
+   118                                               #print DataMatrix
+   119                                           
+   120                                               #minimization solving
+   121                                               #This part essentially corresponds to formula 14
+   122        31       1609.0     51.9      0.0      Ux = Variable(MembershipMatrix.shape[1])
+   123        31        632.0     20.4      0.0      h_tilde = Parameter(H.shape[1])
+   124                                           
+   125        31      44804.0   1445.3      0.0      constraints = [ 0 <= Ux, sum(Ux) == 1]
+   126                                           
+   127    507997    1075546.0      2.1      0.0      for i, Ui in enumerate(MembershipMatrix):
+   128    507966   81117985.0    159.7      1.3          h_tilde.value = np.multiply(H[i], ( -1/(2*RegParam) ))
+   129    507966  256076511.0    504.1      4.0          expression = square( norm( Ux - h_tilde ) )
+   130    507966    5194861.0     10.2      0.1          objective = Minimize(expression)
+   131                                           
+   132    507966  228570594.0    450.0      3.6          prob = Problem(objective, constraints)
+   133                                           
+   134                                                   # if i in range(0,10):
+   135                                                   #     data = prob.get_problem_data(ECOS)
+   136                                                   #     print "Ux size: ", MembershipMatrix.shape[1]
+   137                                                   #     print "A: ", data["A"]
+   138                                                   #     print "G: ", data["G"]
+   139                                                   #     print data
+   140                                           
+   141    507966 5724529558.0  11269.5     89.9          prob.solve(solver=ECOS)
+   142                                           
+   143    507966    1373495.0      2.7      0.0          if Ux.value is not None:
+   144                                                       #print "Value of Ux", Ux.value
+   145                                                       #print "Value of Ux Transpose", Ux.value.transpose()[0]
+   146    507966   17002994.0     33.5      0.3              MembershipMatrix[i] = Ux.value.transpose()[0]
+   147                                                       #print "Solution ", prob.value, "Solution Value", Ux.value, "H part", h_tilde.value
+   148                                                   else:
+   149                                                       print "No solution", Ux.value, prob.value, prob.status
+
+Total time: 57.6324 s
+File: ./RSFKM.py
+Function: UpdateS at line 154
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   154                                           @profile
+   155                                           def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
+   156        31         42.0      1.4      0.0      NormResult = None
+   157                                           
+   158    507997     639945.0      1.3      1.1      for i, row in enumerate(S):
+   159   2539830    4142167.0      1.6      7.2          for k, col in enumerate(row):
+   160   2031864   43633881.0     21.5     75.7              NormResult = la.norm(np.subtract(DataMatrix[i], Centroids[k]))
+   161   2031864    3121418.0      1.5      5.4              if NormResult == 0:
+   162                                                           S[i][k]
+   163   2031864    1629351.0      0.8      2.8              elif NormResult > ThresholdValue:
+   164                                                           S[i][k] = 0
+   165                                                       else:
+   166   2031864    4465613.0      2.2      7.7                  S[i][k] = 1/NormResult
+
+Total time: 205.709 s
+File: ./RSFKM.py
+Function: FindCentroids at line 174
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   174                                           @profile
+   175                                           def FindCentroids(DataMatrix, V, S, U):
+   176        31         43.0      1.4      0.0      SummedDenom = 0.0 #this is the buffer for the denomonator of our vector centroid function
+   177        31         31.0      1.0      0.0      Scalar = 0.0
+   178                                           
+   179                                               #for each centroid
+   180       155        432.0      2.8      0.0      for k, vk in enumerate(V):
+   181       124        847.0      6.8      0.0          tempCentroid = np.zeros([DataMatrix.shape[1]])
+   182                                           
+   183                                                   #for each item in the data matrix
+   184   2031988    2594325.0      1.3      1.3          for i, row in enumerate(DataMatrix):
+   185   2031864    4262975.0      2.1      2.1              Scalar = S[i][k] * U[i][k] #get the scalar we are multiplying our x_i by
+   186                                           
+   187   2031864    2429896.0      1.2      1.2              if Scalar != 0.0:
+   188                                           
+   189                                                           #multiply our scalar against data matrix vector i
+   190                                                           # and add the result to temp centroid f
+   191                                                           #tempCentroid = np.multiply(DataMatrix[i], Scalar)
+   192  60955920   68642350.0      1.1     33.4                  for f, feature in enumerate(vk):
+   193  58924056  125500930.0      2.1     61.0                      tempCentroid[f] += Scalar * DataMatrix[i][f]
+   194                                           
+   195                                                       #keep track of our denomonator sum
+   196   2031864    2272826.0      1.1      1.1              SummedDenom += Scalar
+   197                                           
+   198                                           
+   199                                                   #divide our centroid vector by the denomonator we computed
+   200       124        151.0      1.2      0.0          if SummedDenom != 0.0:
+   201       124       2427.0     19.6      0.0              tempCentroid = np.multiply(tempCentroid, 1/SummedDenom)
+   202                                           
+   203                                           
+   204                                                   #iterate over number of features in our Vectors jsut to copy one to the other
+   205       124       2011.0     16.2      0.0          V[k] = np.copy(tempCentroid)
+   206                                           
+   207                                                   #reset our temp centroid
+   208       124        134.0      1.1      0.0          SummedDenom = 0.0
+   209                                           
+   210        31         30.0      1.0      0.0      return V
+

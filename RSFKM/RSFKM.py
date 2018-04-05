@@ -146,7 +146,7 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
             MembershipMatrix[i] = Ux.value.transpose()[0]
             #print "Solution ", prob.value, "Solution Value", Ux.value, "H part", h_tilde.value
         else:
-            print "No solution", Ux.value, prob.value, prob.status, h_tilde.value
+            print "No solution", Ux.value, prob.value, prob.status
 
     #print "This is the U", MembershipMatrix
 
