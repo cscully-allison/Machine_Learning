@@ -88,12 +88,12 @@ typedef struct Settings_t {
 //extern Settings settings;
 
 /* Function definitions in ldl.c: */
-__device__ void ldl_solve(double *target, double *var);
-__device__ void ldl_factor(void);
-__device__ double check_factorization(void);
-__device__ void matrix_multiply(double *result, double *source);
-__device__ double check_residual(double *target, double *multiplicand);
-__device__ void fill_KKT(void);
+__device__ void ldl_solve(double *target, double *var, Workspace *work, Settings *settings);
+__device__ void ldl_factor(Workspace *work, Settings *settings);
+__device__ double check_factorization(Workspace *work);
+__device__ void matrix_multiply(double *result, double *source, Workspace *work);
+__device__ double check_residual(double *target, double *multiplicand, Workspace *work);
+__device__ void fill_KKT(Workspace *work);
 
 /* Function definitions in matrix_support.c: */
 __device__ void multbymA(double *lhs, double *rhs);
@@ -107,20 +107,20 @@ __device__ void fillb(Workspace *work);
 __device__ void pre_ops(Workspace *work, Params *params);
 
 /* Function definitions in solver.c: */
-__device__ double eval_gap(void);
-__device__ void set_defaults(void);
-__device__ void setup_pointers(void);
+__device__ double eval_gap(Workspace *work);
+__device__ void set_defaults(Settings *settings);
+__device__ void setup_pointers(Workspace *work, Vars *vars);
 __device__ void setup_indexing(void);
-__device__ void set_start(void);
-__device__ double eval_objv(void);
-__device__ void fillrhs_aff(void);
-__device__ void fillrhs_cc(void);
-__device__ void refine(double *target, double *var);
-__device__ double calc_ineq_resid_squared(void);
-__device__ double calc_eq_resid_squared(void);
-__device__ void better_start(void);
-__device__ void fillrhs_start(void);
-__device__ long solve(void);
+__device__ void set_start(Workspace *work, Settings *settings);
+__device__ double eval_objv(Workspace *work);
+__device__ void fillrhs_aff(Workspace *work);
+__device__ void fillrhs_cc(Workspace *work);
+__device__ void refine(double *target, double *var, Workspace *work, Settings *settings);
+__device__ double calc_ineq_resid_squared(Workspace *work);
+__device__ double calc_eq_resid_squared(Workspace *work);
+__device__ void better_start(Workspace *work, Settings *settings);
+__device__ void fillrhs_start(Workspace *work);
+__device__ long solve(Workspace *work, Params *params, Settings *settings, Vars *vars);
 
 /* Function definitions in util.c: */
 __device__ void tic(void);
