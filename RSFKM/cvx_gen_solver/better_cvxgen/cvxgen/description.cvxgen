@@ -1,0 +1,27 @@
+# Produced by CVXGEN, 2018-04-11 10:54:24 -0400.
+# CVXGEN is Copyright (C) 2006-2017 Jacob Mattingley, jem@cvxgen.com.
+# The code in this file is Copyright (C) 2006-2017 Jacob Mattingley.
+# CVXGEN, or solvers produced by CVXGEN, cannot be used for commercial
+# applications without prior written permission from Jacob Mattingley.
+
+# Filename: description.cvxgen.
+# Description: A description of the CVXGEN problem.
+
+dimensions
+  V=15
+end
+
+parameters
+  Hi(V)
+end
+
+variables
+  Ui (V)
+end
+
+minimize
+  quad(Ui - Hi)
+subject to
+  0 <= Ui[v], v=1..V
+  sum(Ui) == 1
+end

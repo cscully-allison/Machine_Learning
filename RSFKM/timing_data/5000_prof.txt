@@ -1,0 +1,113 @@
+Timer unit: 1e-06 s
+
+Total time: 56.39 s
+File: ./RSFKM_PAR.py
+Function: GetHMatrix at line 110
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   110                                           @profile
+   111                                           def GetHMatrix(DataMatrix, H, S, V):
+   112    115023     142864.0      1.2      0.3      for i, row in enumerate(DataMatrix):
+   113   1840000    3140710.0      1.7      5.6          for k, centroid in enumerate(V):
+   114   1725000   53106426.0     30.8     94.2              H[i][k] = S[i][k] * (la.norm(np.subtract(row, centroid)) ** 2)
+
+Total time: 65.0034 s
+File: ./RSFKM_PAR.py
+Function: UpdateMembershipMatrix at line 117
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   117                                           @profile
+   118                                           def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam):
+   119                                               #print H
+   120                                           
+   121        23   58618656.0 2548637.2     90.2      GetHMatrix(DataMatrix, H, S, Centroids)
+   122                                           
+   123                                           
+   124                                               #Declare some temp variable
+   125        23      13690.0    595.2      0.0      H_Flat = H.flatten().astype(np.float64)
+   126        23       8080.0    351.3      0.0      MM_Flat = MembershipMatrix.flatten().astype(np.float64)
+   127        23        110.0      4.8      0.0      NumRows = H.shape[0]
+   128        23        226.0      9.8      0.0      NumFeatures = np.int32(H.shape[1])
+   129        23        107.0      4.7      0.0      StrictRegParam = np.float64(RegParam)
+   130                                           
+   131                                           
+   132                                               """Call solver using py_cuda interface."""
+   133                                           
+   134        23       6935.0    301.5      0.0      source = open("cvx_gen_solver/newcudasolver/solver.cu",'r')
+   135        23       2924.0    127.1      0.0      sourceCode = source.read()
+   136                                           
+   137                                               #mod = SourceModule(sourceCode, include_dirs=['/cse/home/cscully/Machine_Learning/RSFKM/cvx_gen_solver/cuda_cvxgen_sinsrc/include/'])
+   138        23    4206675.0 182898.9      6.5      mod = SourceModule(sourceCode)
+   139        23        827.0     36.0      0.0      call_solver = mod.get_function("call_solver");
+   140        23    1697979.0  73825.2      2.6      call_solver(drv.Out(MM_Flat), drv.In(H_Flat), StrictRegParam, NumFeatures, block=(1,1,1), grid=(NumRows,1))
+   141        23       1550.0     67.4      0.0      MM_Flat = np.reshape(MM_Flat, MembershipMatrix.shape)
+   142                                           
+   143    115023     179213.0      1.6      0.3      for i,row in enumerate(MembershipMatrix):
+   144    115000     266436.0      2.3      0.4           MembershipMatrix[i] = MM_Flat[i]
+
+Total time: 75.7998 s
+File: ./RSFKM_PAR.py
+Function: UpdateS at line 147
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   147                                           @profile
+   148                                           def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
+   149        23         23.0      1.0      0.0      NormResult = None
+   150                                           
+   151    115023     164695.0      1.4      0.2      for i, row in enumerate(S):
+   152   1840000    2770462.0      1.5      3.7          for k, col in enumerate(row):
+   153   1725000   40176891.0     23.3     53.0              NormResult = la.norm(np.subtract(DataMatrix[i], Centroids[k]))
+   154   1725000   10575131.0      6.1     14.0              if NormResult == 0:
+   155                                                           S[i][k]
+   156   1725000    7854610.0      4.6     10.4              elif NormResult > ThresholdValue:
+   157        62        194.0      3.1      0.0                  S[i][k] = 0
+   158                                                       else:
+   159   1724938   14257761.0      8.3     18.8                  S[i][k] = 1/NormResult
+
+Total time: 29.0648 s
+File: ./RSFKM_PAR.py
+Function: FindCentroids at line 167
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   167                                           @profile
+   168                                           def FindCentroids(DataMatrix, V, S, U):
+   169        23         72.0      3.1      0.0      SummedDenom = 0.0 #this is the buffer for the denomonator of our vector centroid function
+   170        23         29.0      1.3      0.0      Scalar = 0.0
+   171                                           
+   172                                               #for each centroid
+   173       368        876.0      2.4      0.0      for k, vk in enumerate(V):
+   174       345       1965.0      5.7      0.0          tempCentroid = np.zeros([DataMatrix.shape[1]])
+   175                                           
+   176                                                   #for each item in the data matrix
+   177   1725345    2436498.0      1.4      8.4          for i, row in enumerate(DataMatrix):
+   178   1725000    4038693.0      2.3     13.9              Scalar = S[i][k] * U[i][k] #get the scalar we are multiplying our x_i by
+   179                                           
+   180   1725000    1883085.0      1.1      6.5              if Scalar != 0.0:
+   181                                           
+   182                                                           #multiply our scalar against data matrix vector i
+   183                                                           # and add the result to temp centroid f
+   184                                                           #tempCentroid = np.multiply(DataMatrix[i], Scalar)
+   185   5174823    9217307.0      1.8     31.7                  for f, feature in enumerate(vk):
+   186   3449882    9472221.0      2.7     32.6                      tempCentroid[f] += Scalar * DataMatrix[i][f]
+   187                                           
+   188                                                       #keep track of our denomonator sum
+   189   1725000    2003196.0      1.2      6.9              SummedDenom += Scalar
+   190                                           
+   191                                           
+   192                                                   #divide our centroid vector by the denomonator we computed
+   193       345        415.0      1.2      0.0          if SummedDenom != 0.0:
+   194       345       5447.0     15.8      0.0              tempCentroid = np.multiply(tempCentroid, 1/SummedDenom)
+   195                                           
+   196                                           
+   197                                                   #iterate over number of features in our Vectors jsut to copy one to the other
+   198       345       4565.0     13.2      0.0          V[k] = np.copy(tempCentroid)
+   199                                           
+   200                                                   #reset our temp centroid
+   201       345        373.0      1.1      0.0          SummedDenom = 0.0
+   202                                           
+   203        23         16.0      0.7      0.0      return V
+
