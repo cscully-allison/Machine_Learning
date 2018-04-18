@@ -77,34 +77,6 @@ struct solver_scope{
         id = _id;
     };
 
-
-
-    __device__ void load_default_data(void) {
-        params.Hi[7] = -14.159830;
-        params.Hi[13] = -311.578125;
-        params.Hi[4] = -240.541046;
-        params.Hi[8] = -19.335428;
-        params.Hi[1] = -234.936264;
-        params.Hi[6] = -396.989258;
-        params.Hi[9] = -399.935394;
-        params.Hi[14] = -12.320724;
-        params.Hi[5] = -419.838776;
-        params.Hi[0] = -367.459381;
-        params.Hi[2] = -368.094269;
-        params.Hi[10] = -26.161362;
-        params.Hi[12] = -479.836975;
-        params.Hi[3] = -423.703278;
-        params.Hi[11] = -10.257023;
-    }
-
-    __device__ void load_data(double* Hi, double RegParam){
-        // In this function, load all problem instance data.
-        double multiplicand = (-1/(2*RegParam));
-        for(int i = 0; i < 15; i++){
-            params.Hi[i] = Hi[i] * multiplicand;
-        }
-    }
-
     __device__ double eval_gap(void) {
       int i;
       double gap;
@@ -1511,31 +1483,37 @@ __device__ int getGlobalIdx_1D_1D(){
 }
 
 
-
-__global__ void call_solver( double* U, double* H, double RegParam, int numFeatures){
+__global__ void call_solver( double* U, double* H, double RegParam, int numFeatures, int NumRows){
+    /* Get Specific Thread Assignment Data */
     int tid = getGlobalIdx_1D_1D();
-    int num_iters;
+    int tidy = threadIdx.y;
 
 
-    solver_scope solver(tid);
+    if(tid < NumRows){
+        solver_scope solver(tid);
 
-    solver.set_defaults();  // Set basic algorithm parameters.
-    solver.setup_indexing();
-
-
-    //load one line of the h matrix
-    //calculate the h_tilde in here
-    solver.load_data(&H[deref(tid, 0, numFeatures)], RegParam);
+        solver.set_defaults();  // Set basic algorithm parameters.
+        solver.setup_indexing();
 
 
-    // Solve our problem at high speed!
-    num_iters = solver.solve();
+        //load one line of the h matrix
+        //calculate the h_tilde in here
+
+        // In this function, load all problem instance data.
+        double multiplicand = (-1/(2*RegParam));
+        for(int i = tidy; i < numFeatures; i += blockDim.y){
+            solver.params.Hi[i] = H[deref(tid,i, numFeatures)] * multiplicand;
+        }
 
 
-    //use_solution(vars, params, tid);
-    for(int i = 0; i < numFeatures; i++){
-        U[deref(tid, i, numFeatures)] = (double) solver.vars.Ui[i];
+        // Solve our problem at high speed!
+        solver.solve();
+
+
+        //use_solution(vars, params, tid);
+        for(int i = tidy; i < numFeatures; i += blockDim.y){
+            U[deref(tid, i, numFeatures)] = (double) solver.vars.Ui[i];
+        }
+
     }
-
-
 }

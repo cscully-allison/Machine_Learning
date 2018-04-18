@@ -86,6 +86,7 @@ def PrintMemberships(Centroids, MembershipMatrix, DataMatrix):
     for v, centroid in enumerate(Centroids):
         print "Cluster number: ", v, "Centroid: ", centroid, " "
 
+
 def GetRandomCentroids(DataMatrix, KClusters):
     Centroids = [];
     Selection = [];
@@ -102,10 +103,12 @@ def GetRandomCentroids(DataMatrix, KClusters):
 
     return Centroids
 
+
 def Convergence(OldCentrioids, centroids, iterations):
     if iterations > MAX_ITERATIONS:
         return True
     return np.allclose(OldCentrioids, centroids, rtol=1e-05)
+
 
 #@profile
 def GetHMatrix(DataMatrix, H, S, V):
@@ -115,8 +118,7 @@ def GetHMatrix(DataMatrix, H, S, V):
 
 
 #@profile
-def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam):
-    #print H
+def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam, TPB):
 
     GetHMatrix(DataMatrix, H, S, Centroids)
 
@@ -124,22 +126,29 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
     #Declare some temp variable
     H_Flat = H.flatten().astype(np.float64)
     MM_Flat = MembershipMatrix.flatten().astype(np.float64)
-    NumRows = H.shape[0]
+    NumRows = np.int32(H.shape[0])
     NumFeatures = np.int32(H.shape[1])
     StrictRegParam = np.float64(RegParam)
+    IntNumFeatures = H.shape[1]
+
+    """Do some quick maths to determine the numer of blocks needed"""
+    BlockX = NumRows/TPB
+
+    while BlockX * TPB < NumRows:
+         BlockX += 1
 
 
     """Call solver using py_cuda interface."""
 
-    TPB = 32
 
     source = open("cuda_solver/solver.cu",'r')
     sourceCode = source.read()
 
-    #mod = SourceModule(sourceCode, include_dirs=['/cse/home/cscully/Machine_Learning/RSFKM/cvx_gen_solver/cuda_cvxgen_sinsrc/include/'])
     mod = SourceModule(sourceCode)
     call_solver = mod.get_function("call_solver");
-    call_solver(drv.Out(MM_Flat), drv.In(H_Flat), StrictRegParam, NumFeatures, block=(TPB,1,1), grid=(NumRows/TPB,1))
+    call_solver(drv.Out(MM_Flat), drv.In(H_Flat), StrictRegParam, NumFeatures, NumRows, block=(TPB,IntNumFeatures,1), grid=(BlockX,1)) #TPB cannot exceed 256
+
+
     MM_Flat = np.reshape(MM_Flat, MembershipMatrix.shape)
 
     for i,row in enumerate(MembershipMatrix):
@@ -216,7 +225,7 @@ def FindCentroids(DataMatrix, V, S, U):
 # Parameter 4: ThresholdValue [float] : Controls the number of outliers.  If the residual of a sample to centroid is larger than <ThresholdValue>,
 #                                       it is re-garded as outlier and not used to learn centroid matrix V since the corresponding s_ik is zero"
 
-def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
+def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB):
     #variables
     Centroids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float) #corresponds to V in paper
     MembershipMatrix = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #should be of shape i rows and k columns; corresponds to U in paper
@@ -238,23 +247,19 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
 
             S[rndx][col] = 1.0
 
-    #Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
-    Centroids = GetRandomCentroids(DataMatrix, KClusters)
-    #print Centroids
 
+    Centroids = GetRandomCentroids(DataMatrix, KClusters)
 
 
     while not Convergence(OldCentrioids, Centroids, TimeStep):
         OldCentrioids = np.copy(Centroids)
-        UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam)
+
+        UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, TPB)
         Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
         UpdateS(DataMatrix, Centroids, S, ThresholdValue)
 
         TimeStep += 1
 
-        print TimeStep
-
-    PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
 
 #        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
