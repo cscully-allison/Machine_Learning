@@ -107,14 +107,14 @@ def Convergence(OldCentrioids, centroids, iterations):
         return True
     return np.allclose(OldCentrioids, centroids, rtol=1e-05)
 
-@profile
+#@profile
 def GetHMatrix(DataMatrix, H, S, V):
     for i, row in enumerate(DataMatrix):
         for k, centroid in enumerate(V):
             H[i][k] = S[i][k] * (la.norm(np.subtract(row, centroid)) ** 2)
 
 
-@profile
+#@profile
 def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam):
     #print H
 
@@ -144,7 +144,7 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
          MembershipMatrix[i] = MM_Flat[i]
 
 
-@profile
+#@profile
 def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
     NormResult = None
 
@@ -164,7 +164,7 @@ def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
 
 
 # v = centroids, s= is matrix holding s aux vars, and u is membership matrix
-@profile
+#@profile
 def FindCentroids(DataMatrix, V, S, U):
     SummedDenom = 0.0 #this is the buffer for the denomonator of our vector centroid function
     Scalar = 0.0

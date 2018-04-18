@@ -163,7 +163,7 @@ def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegPar
             file.write(out)
 
         with open('err_log', 'wb') as err_out:
-            process = Popen(" /cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/cxvgen/solver_interface", stdout=PIPE, stderr=err_out, shell=True)
+            process = Popen("/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/cxvgen/solver_interface", stdout=PIPE, stderr=err_out, shell=True)
 
         while True:
             output = process.stdout.readline();
@@ -291,10 +291,6 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory, Gene
         UpdateS(DataMatrix, Centroids, S, ThresholdValue)
 
         TimeStep += 1
-
-        print TimeStep
-
-        print Centroids
 
 #        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
