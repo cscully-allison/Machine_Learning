@@ -1493,8 +1493,6 @@ __device__ int getGlobalIdx_2D_1D(){
 __global__ void load_scalar_buffer(double* ScalarBuffer, double* S, double* U, int numRows, int numCentroids){
       int k = blockIdx.x;
       int tid = threadIdx.x;
-      int i = tid;
-      int olds = numRows;
 
 
 
@@ -1504,51 +1502,51 @@ __global__ void load_scalar_buffer(double* ScalarBuffer, double* S, double* U, i
 
       __syncthreads();
 
-      if(k == 0  && i == 0){
-          printf("%d\n", numRows);
-      }
-
-
-
-
-
-
-      for(int step = 1; step < numRows; step*=2){
-
-          while( (i+step < numRows) ){
-
-              int ndx = 2 * step * i;
-
-              if(ndx+step < numRows){
-                if(k == 0 && step == 4){
-                    printf("%f, %f, %d, %d\n", ScalarBuffer[deref(k, ndx, numRows)], ScalarBuffer[deref(k, ndx+step, numRows)], ndx, ndx+step);
-                }
-
-                ScalarBuffer[deref(k, ndx, numRows)] += ScalarBuffer[deref(k, ndx+step, numRows)];
-              }
-              i += blockDim.x;
-          }
-
-          i = threadIdx.x;
-          __syncthreads();
-      }
-      __syncthreads();
-
 }
 
 
 __global__ void calculate_centroids(double* DataMatrix, double* V, double* ScalarBuffer, int numRows, int numFeatures){
+    extern __shared__ double localbuffer[];
+
     int k = blockIdx.x;
-    int i_base = threadIdx.x;
-    int f = threadIdx.y;
-
-    for(int i = i_base; i < numRows; i += blockDim.x)
-      atomicAdd(&V[deref(k,f,numFeatures)], ScalarBuffer[deref(k, i, numRows)] * DataMatrix[deref(i,f,numFeatures)]);
+    int f = blockIdx.y;
+    int tid = threadIdx.x;
 
 
-     // if(k == 0 && f == 0 && i_base < numFeatures){
-     //     printf("Centroid[0][%d]: %f\n", i_base, V[deref(k, i_base, numFeatures)]);
-     // }
+
+    for(int i = tid; i < numRows; i += blockDim.x){
+          localbuffer[i] = ScalarBuffer[deref(k, i, numRows)] * DataMatrix[deref(i,f,numFeatures)];
+    }
+
+    __syncthreads();
+
+
+
+    for(int step = 1; step < numRows; step*=2){
+
+        while( (tid+step < numRows) ){
+            int ndx = 2 * step * tid;
+            if( ndx + step < numRows){
+                localbuffer[ndx] += localbuffer[ndx+step];
+            }
+            tid += blockDim.x;
+        }
+        tid = threadIdx.x;
+        __syncthreads();
+    }
+
+    __syncthreads();
+
+
+
+    V[deref(k,f, numRows)] = localbuffer[0];
+
+
+    // if( k == 0 && f < numFeatures && tid == 0){
+    //     printf("V[%d][%d] = %f\n", k, f, V[deref(k, f, numRows)]);
+    // }
+
+
 
 }
 
@@ -1558,27 +1556,35 @@ __global__ void find_centroids(double* DataMatrix, double* V, double* ScalarBuff
     int k = blockIdx.x;
     int i = threadIdx.x;
 
-    int numCentroids = gridDim.x;
 
-
-
-    // //push to own function
-    // for( int ndx = i; ndx < numRows; ndx += blockDim.x){
-    //     if (ScalarBuffer[deref(k, ndx, numRows)] != 0.0 ){
-    //         for(int f = 0; f  < numFeatures; f++){
-    //             V[deref(k,f,numFeatures)] = ScalarBuffer[deref(k, ndx, numRows)] * DataMatrix[deref(ndx,f,numFeatures)];
-    //         }
-    //     }
+    // if( k == 0 && i < numFeatures){
+    //     printf("V[%d][%d] = %f\n", k, i, V[deref(k, i, numRows)]);
     // }
 
 
-    //stride over scalar buffer to sum up required items
-    //results are consistently inconsistent!!!
+    //Sum working
+    for(int step = 1; step < numRows; step*=2){
 
+        while( (i+step < numRows) ){
 
-    if( k < numCentroids && i == 0){
-        printf("ScalarBuffer[%d][%d] = %f\n", k, i, ScalarBuffer[deref(k, i, numRows)]);
+            int ndx = 2 * step * i;
+            if(ndx+step < numRows){
+              ScalarBuffer[deref(k, ndx, numRows)] += ScalarBuffer[deref(k, ndx+step, numRows)];
+            }
+            i += blockDim.x;
+        }
+
+        i = threadIdx.x;
+        __syncthreads();
     }
+    __syncthreads();
+
+
+
+    //
+    // if( k < numCentroids && i == 0){
+    //     printf("ScalarBuffer[%d][%d] = %f\n", k, i, ScalarBuffer[deref(k, i, numRows)]);
+    // }
 
     if(ScalarBuffer[deref(k, 0, numRows)] != 0.0){
         if(i < numFeatures){
@@ -1586,8 +1592,10 @@ __global__ void find_centroids(double* DataMatrix, double* V, double* ScalarBuff
         }
     }
 
-    // if(k == 0 && i < numFeatures){
-    //     printf("Centroid[0][%d]: %f\n", i, V[deref(k, i, numFeatures)]);
+    __syncthreads();
+
+    // if( k == 0 && i < numFeatures){
+    //     printf("V[%d][%d] = %f\n", k, i, V[deref(k, i, numRows)]);
     // }
 
 
