@@ -210,9 +210,8 @@ def FindCentroids( DataMatrix, V, S, U):
             #keep track of our denomonator sum
             SummedDenom += Scalar
 
-        if k < 2:
+        if k == 0:
             print SummedDenom
-
         #divide our centroid vector by the denomonator we computed
         if SummedDenom != 0.0:
             tempCentroid = np.multiply(tempCentroid, 1/SummedDenom)
@@ -221,8 +220,6 @@ def FindCentroids( DataMatrix, V, S, U):
         #iterate over number of features in our Vectors jsut to copy one to the other
         V[k] = np.copy(tempCentroid)
 
-        if k == 0:
-            print V[k]
 
         #reset our temp centroid
         SummedDenom = 0.0
@@ -273,7 +270,9 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
     init_S = mod.get_function("init_S");
     load_scalar_buffer = mod.get_function("load_scalar_buffer")
+    calculate_centroids = mod.get_function("calculate_centroids")
     find_centroids = mod.get_function("find_centroids")
+
 
 
 
@@ -297,7 +296,7 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
     init_S(S_GPU, np.int32(KClusters), block=(KClusters,1,1), grid=(S.shape[0],1,1));
 
     Centroids = GetRandomCentroids(DataMatrix, KClusters)
-    drv.memcpy_htod(Centroids_GPU, Centroids.flatten().astype(np.float64));
+    drv.memcpy_htod(Centroids_GPU, Centroids.flatten().astype(np.float64))
 
 
 #CORE PROCESSING LOOP! ----------------------------------
@@ -307,11 +306,11 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
     UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, AUX_GPU, MatrixH, S_GPU, S, Centroids_GPU, Centroids,  MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod)
 
-    print DataMatrix.shape[0]
-
     #going to use H matrix as a scalar buffer to save on space
     load_scalar_buffer(AUX_GPU, S_GPU, MembershipMatrix_GPU, np.int32(DataMatrix.shape[0]), np.int32(Centroids.shape[0]), block=(THREADS, 1, 1), grid=(Centroids.shape[0],1,1))
-    find_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(THREADS, 1, 1), grid=( Centroids.shape[0], 1))
+
+    calculate_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(32, DataMatrix.shape[1], 1), grid=(Centroids.shape[0],1))
+    find_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(32, 1, 1), grid=( Centroids.shape[0], 1))
     Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
 
 
@@ -325,6 +324,10 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 #        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
     return { "U": MembershipMatrix, "V":Centroids, "Iter":TimeStep  }
+
+
+
+
 
 def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue):
     comparision_vect = []
