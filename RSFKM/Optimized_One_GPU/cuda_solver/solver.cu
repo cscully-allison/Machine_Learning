@@ -1482,14 +1482,123 @@ __device__ int getGlobalIdx_1D_1D(){
     return blockIdx.x * blockDim.x + threadIdx.x;
 }
 
+__device__ int getGlobalIdx_2D_1D(){
+    int blockId = blockIdx.y * gridDim.x + blockIdx.x;
+    int threadId = blockId * blockDim.x + threadIdx.x;
 
-__global__ void call_solver( double* U, double* H, double RegParam, int numFeatures, int NumRows){
+    return threadId;
+}
+
+
+__global__ void load_scalar_buffer(double* ScalarBuffer, double* S, double* U, int numRows, int numCentroids){
+      int k = blockIdx.x;
+      int tid = threadIdx.x;
+
+      for(int i = tid; i < numRows; i += blockDim.x){
+          ScalarBuffer[deref(k, i, numRows)] = S[deref(i, k, numCentroids)] * U[deref(i, k, numCentroids)];
+      }
+
+}
+
+
+__global__ void find_centroids(double* DataMatrix, double* V, double* ScalarBuffer, int numRows, int numFeatures){
+    int gtid = getGlobalIdx_2D_1D();
+
+    int k = blockIdx.x;
+    int i = threadIdx.x;
+
+    int numCentroids = gridDim.x;
+
+
+    for( int ndx = i; ndx < numRows; ndx += blockDim.x){
+        if (ScalarBuffer[deref(k, ndx, numRows)] != 0.0 ){
+            for(int f = 0; f  < numFeatures; f++){
+                V[deref(k,f,numFeatures)] = ScalarBuffer[deref(k, ndx, numRows)] * DataMatrix[deref(ndx,f,numFeatures)];
+            }
+        }
+    }
+
+
+    //stride over scalar buffer to sum up required items
+    //results are consistently inconsistent!!!
+    for(int step = 1; step <= numRows; step = step*2){
+        while( (i+step < numRows) && (i % 2 == 0) ){
+            ScalarBuffer[deref(k, i, numRows)] += ScalarBuffer[deref(k, i+step, numRows)];
+            i += blockDim.x;
+        }
+        i = threadIdx.x;
+        __syncthreads();
+    }
+    __syncthreads();
+
+    if( k < numCentroids && i == 0){
+        printf("ScalarBuffer[%d][%d] = %f\n", k, i, ScalarBuffer[deref(k, i, numRows)]);
+    }
+
+    if(ScalarBuffer[deref(k, 0, numRows)] != 0.0){
+        if(i < numFeatures){
+            V[deref(k, i, numFeatures)] = V[deref(k, i, numFeatures)] * (1/ScalarBuffer[deref(k, 0, numRows)]);
+        }
+    }
+
+    if(k == 0 && i < numFeatures){
+        printf("Centroid[0][%d]: %f\n", i, V[deref(k, i, numFeatures)]);
+    }
+
+
+
+}
+
+
+__global__ void init_S(double* S, int numCols){
+    int i = blockIdx.x;
+    int k = threadIdx.x;
+
+    S[deref(i,k,numCols)] = 1.0;
+}
+
+__global__ void build_h_matrix(double* H, double* DataMatrix, double* S, double* Centroids){
+      int gtid = getGlobalIdx_2D_1D();
+
+      int k = blockIdx.x;
+      int i = blockIdx.y;
+      int f = threadIdx.x;
+
+      int numCentroids = gridDim.x;
+      int numFeatures = blockDim.x;
+
+      __shared__ double buffer[50]; //unlikely to have more than 50 features
+
+      //Get Square Subtracted vectors
+      buffer[f] = (DataMatrix[deref(i,f,numFeatures)] - Centroids[deref(k,f,numFeatures)]) * (DataMatrix[deref(i,f,numFeatures)] - Centroids[deref(k,f,numFeatures)]) ;
+
+      __syncthreads();
+
+      //Do a hekin good sum
+      for(int step = 1; step <= numFeatures; step = step*2){
+          while(f + step <= numFeatures){
+              buffer[f] += buffer[f+step];
+              f += blockDim.x;
+          }
+          f = threadIdx.x;
+          __syncthreads();
+      }
+
+      if(f == 0){
+          H[deref(i,k,numCentroids)] = buffer[f] * S[deref(i,k,numCentroids)];
+      }
+
+
+}
+
+__global__ void update_membership_matrix( double* U, double* U_GPU, double* H, double RegParam, int numClusters, int numRows){
     /* Get Specific Thread Assignment Data */
     int tid = getGlobalIdx_1D_1D();
     int tidy = threadIdx.y;
 
 
-    if(tid < NumRows){
+
+    if(tid < numRows){
         solver_scope solver(tid);
 
         solver.set_defaults();  // Set basic algorithm parameters.
@@ -1498,11 +1607,9 @@ __global__ void call_solver( double* U, double* H, double RegParam, int numFeatu
 
         //load one line of the h matrix
         //calculate the h_tilde in here
-
-        // In this function, load all problem instance data.
         double multiplicand = (-1/(2*RegParam));
-        for(int i = tidy; i < numFeatures; i += blockDim.y){
-            solver.params.Hi[i] = H[deref(tid,i, numFeatures)] * multiplicand;
+        for(int i = tidy; i < numClusters; i += blockDim.y){
+            solver.params.Hi[i] = H[deref(tid,i, numClusters)] * multiplicand;
         }
 
 
@@ -1511,8 +1618,9 @@ __global__ void call_solver( double* U, double* H, double RegParam, int numFeatu
 
 
         //use_solution(vars, params, tid);
-        for(int i = tidy; i < numFeatures; i += blockDim.y){
-            U[deref(tid, i, numFeatures)] = (double) solver.vars.Ui[i];
+        for(int i = tidy; i < numClusters; i += blockDim.y){
+            U[deref(tid, i, numClusters)] = (double) solver.vars.Ui[i];
+            U_GPU[deref(tid, i, numClusters)] = (double) solver.vars.Ui[i];
         }
 
     }

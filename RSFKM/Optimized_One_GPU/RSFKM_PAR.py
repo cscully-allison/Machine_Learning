@@ -114,43 +114,54 @@ def Convergence(OldCentrioids, centroids, iterations):
 def GetHMatrix(DataMatrix, H, S, V):
     for i, row in enumerate(DataMatrix):
         for k, centroid in enumerate(V):
-            H[i][k] = S[i][k] * (la.norm(np.subtract(row, centroid)) ** 2)
+            H[i][k] = S[i][k] * ( la.norm(np.subtract(row, centroid)) ** 2)
+            if i < 1 and k < V.shape[1]:
+                print "On host H[{}][{}] = {}".format(i, k, H[i][k])
+            # if i < 2 and k < V.shape[1]:
+            #     print i, k, (la.norm(np.subtract(row, centroid)) ** 2)
+
 
 
 #@profile
-def UpdateMembershipMatrix(DataMatrix, H, S, Centroids, MembershipMatrix, RegParam, TPB):
+def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centroids_GPU, V, MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod):
 
-    GetHMatrix(DataMatrix, H, S, Centroids)
+    build_h_matrix = mod.get_function("build_h_matrix");
+    call_solver = mod.get_function("update_membership_matrix");
 
 
     #Declare some temp variable
     H_Flat = H.flatten().astype(np.float64)
     MM_Flat = MembershipMatrix.flatten().astype(np.float64)
+
+
     NumRows = np.int32(H.shape[0])
-    NumFeatures = np.int32(H.shape[1])
+    NumCentroids = np.int32(H.shape[1])
+    Int32NumFeatures = np.int32(DataMatrix.shape[1])
+
+
     StrictRegParam = np.float64(RegParam)
-    IntNumFeatures = H.shape[1]
+
+    """Builds up H Matrix on the Cuda Device"""
+    build_h_matrix(H_GPU, DataMatrix_GPU, MembershipMatrix_GPU, Centroids_GPU, block=(DataMatrix.shape[1],1,1), grid=(H.shape[1], H.shape[0], 1))
+
+
 
     """Do some quick maths to determine the numer of blocks needed"""
+    """We will oprimize this part in the future because it causes problems
+    with  warp effiency, There are a dozen+ warps which are running uselessly :/"""
     BlockX = NumRows/TPB
 
     while BlockX * TPB < NumRows:
          BlockX += 1
 
 
-    """Call solver using py_cuda interface."""
-
-
-    source = open("cuda_solver/solver.cu",'r')
-    sourceCode = source.read()
-
-    mod = SourceModule(sourceCode)
-    call_solver = mod.get_function("call_solver");
-    call_solver(drv.Out(MM_Flat), drv.In(H_Flat), StrictRegParam, NumFeatures, NumRows, block=(TPB,IntNumFeatures,1), grid=(BlockX,1)) #TPB cannot exceed 256
+    call_solver(drv.Out(MM_Flat), MembershipMatrix_GPU, H_GPU, StrictRegParam, NumCentroids, NumRows, block=(TPB,H.shape[1],1), grid=(BlockX,1)) #TPB cannot exceed 256
 
 
     MM_Flat = np.reshape(MM_Flat, MembershipMatrix.shape)
 
+
+    #doing this to ensure that the membership matrix gets copied out
     for i,row in enumerate(MembershipMatrix):
          MembershipMatrix[i] = MM_Flat[i]
 
@@ -176,7 +187,7 @@ def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
 
 # v = centroids, s= is matrix holding s aux vars, and u is membership matrix
 #@profile
-def FindCentroids(DataMatrix, V, S, U):
+def FindCentroids( DataMatrix, V, S, U):
     SummedDenom = 0.0 #this is the buffer for the denomonator of our vector centroid function
     Scalar = 0.0
 
@@ -199,6 +210,8 @@ def FindCentroids(DataMatrix, V, S, U):
             #keep track of our denomonator sum
             SummedDenom += Scalar
 
+        if k < 2:
+            print SummedDenom
 
         #divide our centroid vector by the denomonator we computed
         if SummedDenom != 0.0:
@@ -207,6 +220,9 @@ def FindCentroids(DataMatrix, V, S, U):
 
         #iterate over number of features in our Vectors jsut to copy one to the other
         V[k] = np.copy(tempCentroid)
+
+        if k == 0:
+            print V[k]
 
         #reset our temp centroid
         SummedDenom = 0.0
@@ -231,8 +247,36 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
     MembershipMatrix = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #should be of shape i rows and k columns; corresponds to U in paper
     MatrixH = np.zeros([DataMatrix.shape[0], KClusters], dtype=float) #derived from our s aux variable
     S = np.zeros([DataMatrix.shape[0], KClusters], dtype=float) #holds our calulated s_ik
-    TimeStep = 0
     OldCentrioids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float)
+
+    TimeStep = 0
+
+    #allocate some space on the kernel
+    DataMatrix_GPU = drv.mem_alloc(DataMatrix.flatten().astype(np.float64).nbytes)
+    MembershipMatrix_GPU = drv.mem_alloc(MembershipMatrix.flatten().astype(np.float64).nbytes)
+    Centroids_GPU = drv.mem_alloc(Centroids.flatten().astype(np.float64).nbytes)
+    S_GPU = drv.mem_alloc(S.flatten().astype(np.float64).nbytes)
+    AUX_GPU = drv.mem_alloc(MatrixH.flatten().astype(np.float64).nbytes)
+
+    THREADS = 640
+
+
+
+    drv.memcpy_htod(DataMatrix_GPU, DataMatrix.flatten().astype(np.float64))
+
+    #create module 1 time
+    source = open("cuda_solver/solver.cu",'r')
+    sourceCode = source.read()
+
+    mod = SourceModule(sourceCode)
+
+
+    init_S = mod.get_function("init_S");
+    load_scalar_buffer = mod.get_function("load_scalar_buffer")
+    find_centroids = mod.get_function("find_centroids")
+
+
+
 
     #initalization
     for rndx, row in enumerate(DataMatrix):
@@ -247,18 +291,35 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
             S[rndx][col] = 1.0
 
+    # initialize s on the gpu
+    # may not even be worth it
+    # S.shape[0] is number of rows
+    init_S(S_GPU, np.int32(KClusters), block=(KClusters,1,1), grid=(S.shape[0],1,1));
 
     Centroids = GetRandomCentroids(DataMatrix, KClusters)
+    drv.memcpy_htod(Centroids_GPU, Centroids.flatten().astype(np.float64));
 
 
-    while not Convergence(OldCentrioids, Centroids, TimeStep):
-        OldCentrioids = np.copy(Centroids)
+#CORE PROCESSING LOOP! ----------------------------------
 
-        UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, TPB)
-        Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
-        UpdateS(DataMatrix, Centroids, S, ThresholdValue)
+#    while not Convergence(OldCentrioids, Centroids, TimeStep):
+    OldCentrioids = np.copy(Centroids)
 
-        TimeStep += 1
+    UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, AUX_GPU, MatrixH, S_GPU, S, Centroids_GPU, Centroids,  MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod)
+
+    print DataMatrix.shape[0]
+
+    #going to use H matrix as a scalar buffer to save on space
+    load_scalar_buffer(AUX_GPU, S_GPU, MembershipMatrix_GPU, np.int32(DataMatrix.shape[0]), np.int32(Centroids.shape[0]), block=(THREADS, 1, 1), grid=(Centroids.shape[0],1,1))
+    find_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(THREADS, 1, 1), grid=( Centroids.shape[0], 1))
+    Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
+
+
+
+
+    UpdateS(DataMatrix, Centroids, S, ThresholdValue)
+
+    TimeStep += 1
 
 
 #        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
