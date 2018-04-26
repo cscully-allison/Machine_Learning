@@ -5,7 +5,7 @@ import random
 import numpy.linalg as la
 #import matplotlib.pyplot as plt
 import numpy as np
-import pycuda.autoinit
+import pycuda.autoinit as ai
 import pycuda.driver as drv
 from pycuda.compiler import SourceModule
 from cvxpy import *
@@ -115,11 +115,9 @@ def GetHMatrix(DataMatrix, H, S, V):
     for i, row in enumerate(DataMatrix):
         for k, centroid in enumerate(V):
             H[i][k] = S[i][k] * ( la.norm(np.subtract(row, centroid)) ** 2)
-            if i < 1 and k < V.shape[1]:
-                print "On host H[{}][{}] = {}".format(i, k, H[i][k])
-            # if i < 2 and k < V.shape[1]:
-            #     print i, k, (la.norm(np.subtract(row, centroid)) ** 2)
 
+            if i == 0 and k == 0:
+                 print H[i][k], S[i][k]
 
 
 #@profile
@@ -141,9 +139,26 @@ def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centr
 
     StrictRegParam = np.float64(RegParam)
 
-    """Builds up H Matrix on the Cuda Device"""
-    build_h_matrix(H_GPU, DataMatrix_GPU, MembershipMatrix_GPU, Centroids_GPU, block=(DataMatrix.shape[1],1,1), grid=(H.shape[1], H.shape[0], 1))
 
+
+    GetHMatrix(DataMatrix, H, S, V)
+
+
+
+    """Builds up H Matrix on the Cuda Device"""
+    build_h_matrix(H_GPU, DataMatrix_GPU, S_GPU, Centroids_GPU, block=(DataMatrix.shape[1],1,1), grid=(H.shape[1], H.shape[0], 1))
+
+
+    ai.context.synchronize()
+
+    drv.memcpy_dtoh(H_Flat, H_GPU)
+
+    H_Flat = np.reshape(H_Flat, H.shape)
+
+    for i, line in enumerate(H_Flat):
+        if i == 0:
+            print line, "From GPU"
+            print H[i], "~~From CPU~~"
 
 
     """Do some quick maths to determine the numer of blocks needed"""
@@ -154,16 +169,22 @@ def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centr
     while BlockX * TPB < NumRows:
          BlockX += 1
 
+    call_solver(MembershipMatrix_GPU, H_GPU, StrictRegParam, NumCentroids, NumRows, block=(1,1,1), grid=(DataMatrix.shape[0],1))
+    # call_solver(drv.Out(MM_Flat), MembershipMatrix_GPU, H_GPU, StrictRegParam, NumCentroids, NumRows, block=(1,1,1), grid=(DataMatrix.shape[0],1)) #TPB cannot exceed 256
 
-    call_solver(drv.Out(MM_Flat), MembershipMatrix_GPU, H_GPU, StrictRegParam, NumCentroids, NumRows, block=(TPB,H.shape[1],1), grid=(BlockX,1)) #TPB cannot exceed 256
+    ai.context.synchronize()
 
 
-    MM_Flat = np.reshape(MM_Flat, MembershipMatrix.shape)
-
-
-    #doing this to ensure that the membership matrix gets copied out
-    for i,row in enumerate(MembershipMatrix):
-         MembershipMatrix[i] = MM_Flat[i]
+    # MM_Flat = np.reshape(MM_Flat, MembershipMatrix.shape)
+    #
+    #
+    # #doing this to ensure that the membership matrix gets copied out
+    # for i,row in enumerate(MembershipMatrix):
+    #      MembershipMatrix[i] = MM_Flat[i]
+    #
+    # for i in MembershipMatrix:
+    #     print sum(i)
+    #
 
 
 #@profile
@@ -180,7 +201,6 @@ def UpdateS(DataMatrix, Centroids, S, ThresholdValue):
             else:
                 S[i][k] = 1/NormResult
 
-    #print "This is the S", S
 
 
 
@@ -212,12 +232,14 @@ def FindCentroids( DataMatrix, V, S, U):
             SummedDenom += Scalar
 
 
+
         #divide our centroid vector by the denomonator we computed
         if SummedDenom != 0.0:
             tempCentroid = np.multiply(tempCentroid, 1/SummedDenom)
 
-        if k == 0:
-            print tempCentroid
+        # if k == 3:
+        #     print tempCentroid, "Summed Denom: ", SummedDenom, 1/SummedDenom
+
 
         #iterate over number of features in our Vectors jsut to copy one to the other
         V[k] = np.copy(tempCentroid)
@@ -275,6 +297,7 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
     load_scalar_buffer = mod.get_function("load_scalar_buffer")
     calculate_centroids = mod.get_function("calculate_centroids")
     find_centroids = mod.get_function("find_centroids")
+    update_S = mod.get_function("update_S")
 
 
 
@@ -299,9 +322,14 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
     # initialize s on the gpu
     # may not even be worth it
     # S.shape[0] is number of rows
-    init_S(S_GPU, np.int32(KClusters), block=(KClusters,1,1), grid=(S.shape[0],1,1));
+    #init_S(S_GPU, np.int32(KClusters), block=(KClusters,1,1), grid=(S.shape[0],1,1));
+
+    drv.memcpy_htod(S_GPU, S.flatten().astype(np.float64))
+
+    ai.context.synchronize()
 
     Centroids = GetRandomCentroids(DataMatrix, KClusters)
+
     drv.memcpy_htod(MembershipMatrix_GPU, MembershipMatrix.flatten().astype(np.float64))
     drv.memcpy_htod(Centroids_GPU, Centroids.flatten().astype(np.float64))
 
@@ -309,27 +337,54 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
 #CORE PROCESSING LOOP! ----------------------------------
 
-#    while not Convergence(OldCentrioids, Centroids, TimeStep):
-    OldCentrioids = np.copy(Centroids)
+    while not Convergence(OldCentrioids, Centroids, TimeStep):
+        OldCentrioids = np.copy(Centroids)
 
-    UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, AUX_GPU, MatrixH, S_GPU, S, Centroids_GPU, Centroids,  MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod)
-
-    #going to use H matrix as a scalar buffer to save on space
-    load_scalar_buffer(AUX_GPU, S_GPU, MembershipMatrix_GPU, np.int32(DataMatrix.shape[0]), np.int32(Centroids.shape[0]), block=(THREADS, 1, 1), grid=(Centroids.shape[0],1,1))
-    calculate_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(THREADS, 1, 1), grid=(Centroids.shape[0], Centroids.shape[1]), shared=(DataMatrix.shape[0] * 8))
-    find_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(32, 1, 1), grid=( Centroids.shape[0], 1))
+        UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, AUX_GPU, MatrixH, S_GPU, S, Centroids_GPU, Centroids,  MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod)
 
 
+        #going to use H matrix as a scalar buffer to save on space
+        load_scalar_buffer(AUX_GPU, S_GPU, MembershipMatrix_GPU, np.int32(DataMatrix.shape[0]), np.int32(Centroids.shape[0]), block=(THREADS, 1, 1), grid=(Centroids.shape[0],1,1))
+        ai.context.synchronize()
+        calculate_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(THREADS, 1, 1), grid=(Centroids.shape[0], Centroids.shape[1]), shared=(DataMatrix.shape[0] * 8))
+        ai.context.synchronize()
 
 
-    Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
+
+        find_centroids(DataMatrix_GPU, Centroids_GPU, AUX_GPU, np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(32, 1, 1), grid=( Centroids.shape[0], 1))
+        ai.context.synchronize()
 
 
-    UpdateS(DataMatrix, Centroids, S, ThresholdValue)
+        #Centroids = FindCentroids(DataMatrix, Centroids, S, MembershipMatrix)
 
-    TimeStep += 1
+        update_S( S_GPU, DataMatrix_GPU, Centroids_GPU, np.float64(ThresholdValue), np.int32(DataMatrix.shape[0]), np.int32(DataMatrix.shape[1]), block=(DataMatrix.shape[1],1,1), grid=(DataMatrix.shape[0], Centroids.shape[0], 1), shared=(DataMatrix.shape[1] * 8))
+        ai.context.synchronize()
+
+        #UpdateS(DataMatrix, Centroids, S, ThresholdValue)
+
+        Centroids_Host = Centroids.flatten().astype(np.float)
+        drv.memcpy_dtoh(Centroids_Host, Centroids_GPU)
+        Centroids = np.reshape(Centroids_Host, Centroids.shape)
 
 
+        print TimeStep
+
+        TimeStep += 1
+
+
+
+    MembershipMatrix = MembershipMatrix.flatten().astype(np.float64)
+    drv.memcpy_dtoh(MembershipMatrix, MembershipMatrix_GPU)
+    MembershipMatrix = np.reshape(MembershipMatrix, (DataMatrix.shape[0], Centroids.shape[0]))
+
+
+
+
+    # for line in MembershipMatrix:
+    #     print sum(line)
+
+
+    #PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
 #        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
     return { "U": MembershipMatrix, "V":Centroids, "Iter":TimeStep  }

@@ -1496,14 +1496,18 @@ __global__ void call_solver( double* U, double* H, double RegParam, int numFeatu
         solver.setup_indexing();
 
 
-        //load one line of the h matrix
-        //calculate the h_tilde in here
+        // for(int i = tidy; i < 15 && tid == 0; i += blockDim.y){
+        //     printf("params.Hi[%d] = %f;\n", i,  H[deref(tid, i, numFeatures)]);
+        // }
+
+
 
         // In this function, load all problem instance data.
         double multiplicand = (-1/(2*RegParam));
         for(int i = tidy; i < numFeatures; i += blockDim.y){
             solver.params.Hi[i] = H[deref(tid,i, numFeatures)] * multiplicand;
         }
+
 
 
         // Solve our problem at high speed!
@@ -1514,6 +1518,10 @@ __global__ void call_solver( double* U, double* H, double RegParam, int numFeatu
         for(int i = tidy; i < numFeatures; i += blockDim.y){
             U[deref(tid, i, numFeatures)] = (double) solver.vars.Ui[i];
         }
+
+        // for(int i = tidy; i < 15 && tid == 0; i += blockDim.y){
+        //     printf("U_GPU[%d][%d] = %f\n", tid, i, U[deref(tid, i, numFeatures)]);
+        // }
 
     }
 }

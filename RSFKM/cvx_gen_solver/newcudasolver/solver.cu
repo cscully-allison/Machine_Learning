@@ -79,21 +79,22 @@ struct solver_scope{
 
 
     __device__ void load_default_data(void) {
-        params.Hi[7] = -14.159830;
-        params.Hi[13] = -311.578125;
-        params.Hi[4] = -240.541046;
-        params.Hi[8] = -19.335428;
-        params.Hi[1] = -234.936264;
-        params.Hi[6] = -396.989258;
-        params.Hi[9] = -399.935394;
-        params.Hi[14] = -12.320724;
-        params.Hi[5] = -419.838776;
-        params.Hi[0] = -367.459381;
-        params.Hi[2] = -368.094269;
-        params.Hi[10] = -26.161362;
-        params.Hi[12] = -479.836975;
-        params.Hi[3] = -423.703278;
-        params.Hi[11] = -10.257023;
+      params.Hi[14] = 2.953339;
+      params.Hi[2] = 1.454128;
+      params.Hi[3] = 0.089874;
+      params.Hi[0] = 3.263045;
+      params.Hi[1] = 32.824003;
+      params.Hi[4] = 0.834805;
+      params.Hi[5] = 57.261898;
+      params.Hi[8] = 27.681738;
+      params.Hi[9] = 7.685406;
+      params.Hi[6] = 1.645966;
+      params.Hi[7] = 0.910013;
+      params.Hi[10] = 0.520637;
+      params.Hi[11] = 17.811894;
+      params.Hi[12] = 46.676662;
+      params.Hi[13] = 1.876688;
+
     }
 
     __device__ void load_data(double* Hi, double RegParam){

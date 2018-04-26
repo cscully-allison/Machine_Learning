@@ -75,6 +75,7 @@ struct solver_scope{
 
     __device__ solver_scope(int _id){
         id = _id;
+
     };
 
     __device__ double eval_gap(void) {
@@ -1490,6 +1491,65 @@ __device__ int getGlobalIdx_2D_1D(){
 }
 
 
+__global__ void update_S( double* S, double* DataMatrix, double* Centroids, double ThresholdValue, int numRows, int numFeatures){
+      extern __shared__ double normBuffer[];
+
+      int i = blockIdx.x;
+      int k = blockIdx.y;
+      int f = threadIdx.x;
+      int tid = threadIdx.x;
+
+      int numCentroids = gridDim.y;
+
+      //
+      // if(i == 0 && k == 0 && f == 0){
+      //     printf("i: %d, k: %d, f: %d\n", gridDim.x, gridDim.y, blockDim.x);
+      // }
+
+
+      normBuffer[f] = (DataMatrix[deref(i, f, numFeatures)] - Centroids[deref(k, f, numFeatures)]) * (DataMatrix[deref(i, f, numFeatures)] - Centroids[deref(k, f, numFeatures)]);
+
+
+      __syncthreads(); //this syncthreads is essential
+
+
+
+      //this section of code sums down our stored scalars * features into 1 feature of one centroid
+      for(int step = 1; step < numFeatures; step*=2){
+
+          while( (tid+step < numFeatures) ){
+              int ndx = 2 * step * tid;
+              if( ndx + step < numFeatures){
+                  normBuffer[ndx] += normBuffer[ndx+step];
+              }
+              tid += blockDim.x;
+          }
+          tid = threadIdx.x;
+          __syncthreads();
+      }
+
+      __syncthreads();
+
+      // if(i == 5 && k == 3 && f == 0){
+      //     printf("i: %d, k: %d, normBuffer[%d] = %f\n", i, k, f, sqrt(normBuffer[f]) );
+      // }
+
+      if(normBuffer[0] == 0){
+        //do nothing so S[i][k]
+      }
+      else if( normBuffer[0] > ThresholdValue){
+        S[deref(i,k,numCentroids)] = 0;
+      }
+      else{
+        S[deref(i,k,numCentroids)] = 1/normBuffer[0];
+      }
+
+
+
+}
+
+
+/*Loads a buffer with all our scalar values calulated from S and U and used to multiply with a given centroid K*/
 __global__ void load_scalar_buffer(double* ScalarBuffer, double* S, double* U, int numRows, int numCentroids){
       int k = blockIdx.x;
       int tid = threadIdx.x;
@@ -1512,16 +1572,22 @@ __global__ void calculate_centroids(double* DataMatrix, double* V, double* Scala
     int f = blockIdx.y;
     int tid = threadIdx.x;
 
+    // if(k == 0 && f == 0 && tid == 0){
+    //     printf("k: %d, f: %d, i: %d\n", gridDim.x, gridDim.y, blockDim.x);
+    // }
 
 
+    //this shared memory buffer represents a stack of scalars * a feature for all rows in my data matrix
+    // used as a storage for summing in the next step
     for(int i = tid; i < numRows; i += blockDim.x){
           localbuffer[i] = ScalarBuffer[deref(k, i, numRows)] * DataMatrix[deref(i,f,numFeatures)];
     }
 
-    __syncthreads();
+    __syncthreads(); //this syncthreads is essential
 
 
 
+    //this section of code sums down our stored scalars * features into 1 feature of one centroid
     for(int step = 1; step < numRows; step*=2){
 
         while( (tid+step < numRows) ){
@@ -1537,14 +1603,12 @@ __global__ void calculate_centroids(double* DataMatrix, double* V, double* Scala
 
     __syncthreads();
 
-
-
-    V[deref(k,f, numRows)] = localbuffer[0];
-
-
-    // if( k == 0 && f < numFeatures && tid == 0){
-    //     printf("V[%d][%d] = %f\n", k, f, V[deref(k, f, numRows)]);
+    // if(k==2 && tid == 0){
+    //     printf("V[%d][%d] = %f \n", k, f, localbuffer[0]);
     // }
+
+    //store in global memory for later use
+    V[deref(k,f,numFeatures)] = localbuffer[0];
 
 
 
@@ -1555,21 +1619,18 @@ __global__ void find_centroids(double* DataMatrix, double* V, double* ScalarBuff
 
     int k = blockIdx.x;
     int i = threadIdx.x;
+    int f = threadIdx.x;
 
-
-    // if( k == 0 && i < numFeatures){
-    //     printf("V[%d][%d] = %f\n", k, i, V[deref(k, i, numRows)]);
+    // if(k==3 && f < numFeatures){
+    //       printf("V[%d][%d] = %f \n", k, f, V[deref(k,f,numRows)]);
     // }
-
 
     //Sum working
     for(int step = 1; step < numRows; step*=2){
-
         while( (i+step < numRows) ){
-
             int ndx = 2 * step * i;
             if(ndx+step < numRows){
-              ScalarBuffer[deref(k, ndx, numRows)] += ScalarBuffer[deref(k, ndx+step, numRows)];
+                ScalarBuffer[deref(k, ndx, numRows)] += ScalarBuffer[deref(k, ndx+step, numRows)];
             }
             i += blockDim.x;
         }
@@ -1579,26 +1640,23 @@ __global__ void find_centroids(double* DataMatrix, double* V, double* ScalarBuff
     }
     __syncthreads();
 
+    //if(ScalarBuffer[deref(k, 0, numRows)] != 0.0){
 
-
-    //
-    // if( k < numCentroids && i == 0){
-    //     printf("ScalarBuffer[%d][%d] = %f\n", k, i, ScalarBuffer[deref(k, i, numRows)]);
-    // }
-
-    if(ScalarBuffer[deref(k, 0, numRows)] != 0.0){
-        if(i < numFeatures){
-            V[deref(k, i, numFeatures)] = V[deref(k, i, numFeatures)] * (1/ScalarBuffer[deref(k, 0, numRows)]);
-        }
-    }
+      double normalize = (1/ScalarBuffer[deref(k, 0, numRows)]);
+      if(f < numFeatures){
+          V[deref(k, f, numFeatures)] *= normalize;
+      }
+    //}
 
     __syncthreads();
 
-    // if( k == 0 && i < numFeatures){
-    //     printf("V[%d][%d] = %f\n", k, i, V[deref(k, i, numRows)]);
+    // if(k==3 && f < numFeatures){
+    //       printf("V[%d][%d] = %f, ScalarBuffer: %f, Normalize: %f \n", k, f, V[deref(k,f,numFeatures)], ScalarBuffer[deref(k, 0, numRows)], normalize);
+    //
     // }
 
 
+    __syncthreads();
 
 }
 
@@ -1610,12 +1668,14 @@ __global__ void init_S(double* S, int numCols){
     S[deref(i,k,numCols)] = 1.0;
 }
 
+
 __global__ void build_h_matrix(double* H, double* DataMatrix, double* S, double* Centroids){
       int gtid = getGlobalIdx_2D_1D();
 
       int k = blockIdx.x;
       int i = blockIdx.y;
       int f = threadIdx.x;
+      int tid = threadIdx.x;
 
       int numCentroids = gridDim.x;
       int numFeatures = blockDim.x;
@@ -1623,47 +1683,75 @@ __global__ void build_h_matrix(double* H, double* DataMatrix, double* S, double*
       __shared__ double buffer[50]; //unlikely to have more than 50 features
 
       //Get Square Subtracted vectors
+      //part of the norm
       buffer[f] = (DataMatrix[deref(i,f,numFeatures)] - Centroids[deref(k,f,numFeatures)]) * (DataMatrix[deref(i,f,numFeatures)] - Centroids[deref(k,f,numFeatures)]) ;
 
       __syncthreads();
 
-      //Do a hekin good sum
-      for(int step = 1; step <= numFeatures; step = step*2){
-          while(f + step <= numFeatures){
-              buffer[f] += buffer[f+step];
-              f += blockDim.x;
+
+      for(int step = 1; step < numFeatures; step*=2){
+
+          while( (tid+step < numFeatures) ){
+              int ndx = 2 * step * tid;
+              if( ndx + step < numFeatures){
+                  buffer[ndx] += buffer[ndx+step];
+              }
+              tid += blockDim.x;
           }
-          f = threadIdx.x;
+          tid = threadIdx.x;
           __syncthreads();
       }
 
+      __syncthreads();
+
+
+
+
       if(f == 0){
-          H[deref(i,k,numCentroids)] = buffer[f] * S[deref(i,k,numCentroids)];
+          H[deref(i,k,numCentroids)] = buffer[0] * S[deref(i,k,numCentroids)];
       }
+
+      __syncthreads();
+
+      // if( i == 0 && k == 0 && f == 0 ){
+      //   printf("Summed buffer for H[%d][%d]: %f\n", i, k, H[deref(i,k,numCentroids)]);
+      // }
+
 
 
 }
 
-__global__ void update_membership_matrix( double* U, double* U_GPU, double* H, double RegParam, int numClusters, int numRows){
+__global__ void update_membership_matrix( double* U_GPU, double* H, double RegParam, int numClusters, int numRows){
     /* Get Specific Thread Assignment Data */
-    int tid = getGlobalIdx_1D_1D();
-    int tidy = threadIdx.y;
+    int tid = blockIdx.x;
 
 
 
     if(tid < numRows){
         solver_scope solver(tid);
 
+
+
         solver.set_defaults();  // Set basic algorithm parameters.
         solver.setup_indexing();
 
+        for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
+            printf("H[%d] = %f;\n", i,  H[deref(tid, i, numClusters)]);
+        }
 
-        //load one line of the h matrix
-        //calculate the h_tilde in here
+        // load one line of the h matrix
+        // calculate the h_tilde in here
+
         double multiplicand = (-1/(2*RegParam));
-        for(int i = tidy; i < numClusters; i += blockDim.y){
+        for(int i = 0; i < numClusters; i += blockDim.y){
             solver.params.Hi[i] = H[deref(tid,i, numClusters)] * multiplicand;
         }
+
+
+        for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
+            printf("params.Hi[%d] = %f;\n", i,  solver.params.Hi[i]);
+        }
+
 
 
         // Solve our problem at high speed!
@@ -1671,9 +1759,16 @@ __global__ void update_membership_matrix( double* U, double* U_GPU, double* H, d
 
 
         //use_solution(vars, params, tid);
-        for(int i = tidy; i < numClusters; i += blockDim.y){
-            U[deref(tid, i, numClusters)] = (double) solver.vars.Ui[i];
+        for(int i = 0; i < numClusters; i += blockDim.y){
             U_GPU[deref(tid, i, numClusters)] = (double) solver.vars.Ui[i];
+        }
+
+
+        __syncthreads();
+
+        for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
+            if(! isnan(U_GPU[deref(tid, i, numClusters)]) )
+              printf("U_GPU[%d][%d] = %f\n", tid, i, U_GPU[deref(tid, i, numClusters)]);
         }
 
     }
