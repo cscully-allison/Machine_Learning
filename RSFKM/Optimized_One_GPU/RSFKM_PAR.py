@@ -92,7 +92,6 @@ def GetRandomCentroids(DataMatrix, KClusters):
     Selection = [];
 
     for vect in range(0,KClusters):
-
         Selection = DataMatrix[random.randint(0,DataMatrix.shape[0]-1)]
         while any((Selection == Centroid).all() for Centroid in Centroids):
             Selection = DataMatrix[random.randint(0,DataMatrix.shape[0]-1)]
@@ -116,8 +115,8 @@ def GetHMatrix(DataMatrix, H, S, V):
         for k, centroid in enumerate(V):
             H[i][k] = S[i][k] * ( la.norm(np.subtract(row, centroid)) ** 2)
 
-            if i == 0 and k == 0:
-                 print H[i][k], S[i][k]
+            # if i == 0 and k == 0:
+            #      print H[i][k], S[i][k]
 
 
 #@profile
@@ -141,7 +140,7 @@ def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centr
 
 
 
-    GetHMatrix(DataMatrix, H, S, V)
+    #GetHMatrix(DataMatrix, H, S, V)
 
 
 
@@ -155,10 +154,10 @@ def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centr
 
     H_Flat = np.reshape(H_Flat, H.shape)
 
-    for i, line in enumerate(H_Flat):
-        if i == 0:
-            print line, "From GPU"
-            print H[i], "~~From CPU~~"
+    # for i, line in enumerate(H_Flat):
+    #     if i == 0:
+    #         print line, "From GPU"
+    #         print H[i], "~~From CPU~~"
 
 
     """Do some quick maths to determine the numer of blocks needed"""
@@ -330,6 +329,8 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
     Centroids = GetRandomCentroids(DataMatrix, KClusters)
 
+
+
     drv.memcpy_htod(MembershipMatrix_GPU, MembershipMatrix.flatten().astype(np.float64))
     drv.memcpy_htod(Centroids_GPU, Centroids.flatten().astype(np.float64))
 
@@ -338,6 +339,8 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 #CORE PROCESSING LOOP! ----------------------------------
 
     while not Convergence(OldCentrioids, Centroids, TimeStep):
+
+
         OldCentrioids = np.copy(Centroids)
 
         UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, AUX_GPU, MatrixH, S_GPU, S, Centroids_GPU, Centroids,  MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod)
@@ -365,6 +368,8 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
         Centroids_Host = Centroids.flatten().astype(np.float)
         drv.memcpy_dtoh(Centroids_Host, Centroids_GPU)
         Centroids = np.reshape(Centroids_Host, Centroids.shape)
+
+
 
 
         print TimeStep

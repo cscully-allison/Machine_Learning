@@ -1530,6 +1530,8 @@ __global__ void update_S( double* S, double* DataMatrix, double* Centroids, doub
 
       __syncthreads();
 
+      normBuffer[0] = sqrt(normBuffer[0]);
+
       // if(i == 5 && k == 3 && f == 0){
       //     printf("i: %d, k: %d, normBuffer[%d] = %f\n", i, k, f, sqrt(normBuffer[f]) );
       // }
@@ -1686,6 +1688,16 @@ __global__ void build_h_matrix(double* H, double* DataMatrix, double* S, double*
       //part of the norm
       buffer[f] = (DataMatrix[deref(i,f,numFeatures)] - Centroids[deref(k,f,numFeatures)]) * (DataMatrix[deref(i,f,numFeatures)] - Centroids[deref(k,f,numFeatures)]) ;
 
+
+
+      // if( i == 0 && k == 0 ){
+      //   printf("%d, %d, Centroid[%d]: %f\n", i, k, f, Centroids[deref(k,f,numFeatures)]);
+      // }
+
+
+
+
+
       __syncthreads();
 
 
@@ -1705,6 +1717,12 @@ __global__ void build_h_matrix(double* H, double* DataMatrix, double* S, double*
       __syncthreads();
 
 
+      // if( i == 0 && k == 0 && f == 0){
+      //   printf("%d, %d, Buffer[%d]: %f\n", i, k, f, buffer[f]);
+      // }
+      // if( i == 0 && k == 0 && f == 0 ){
+      //   printf("Summed buffer for S[%d][%d]: %f\n", i, k, S[deref(i,k,numCentroids)]);
+      // }
 
 
       if(f == 0){
@@ -1713,9 +1731,10 @@ __global__ void build_h_matrix(double* H, double* DataMatrix, double* S, double*
 
       __syncthreads();
 
-      // if( i == 0 && k == 0 && f == 0 ){
-      //   printf("Summed buffer for H[%d][%d]: %f\n", i, k, H[deref(i,k,numCentroids)]);
-      // }
+       // if( i == 0 && k == 0 && f == 0 ){
+       //   printf("Summed buffer for H[%d][%d]: %f\n", i, k, H[deref(i,k,numCentroids)]);
+       // }
+
 
 
 
@@ -1735,9 +1754,9 @@ __global__ void update_membership_matrix( double* U_GPU, double* H, double RegPa
         solver.set_defaults();  // Set basic algorithm parameters.
         solver.setup_indexing();
 
-        for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
-            printf("H[%d] = %f;\n", i,  H[deref(tid, i, numClusters)]);
-        }
+        // for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
+        //     printf("H[%d] = %f;\n", i,  H[deref(tid, i, numClusters)]);
+        // }
 
         // load one line of the h matrix
         // calculate the h_tilde in here
@@ -1748,9 +1767,9 @@ __global__ void update_membership_matrix( double* U_GPU, double* H, double RegPa
         }
 
 
-        for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
-            printf("params.Hi[%d] = %f;\n", i,  solver.params.Hi[i]);
-        }
+        // for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
+        //     printf("params.Hi[%d] = %f;\n", i,  solver.params.Hi[i]);
+        // }
 
 
 
@@ -1766,10 +1785,10 @@ __global__ void update_membership_matrix( double* U_GPU, double* H, double RegPa
 
         __syncthreads();
 
-        for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
-            if(! isnan(U_GPU[deref(tid, i, numClusters)]) )
-              printf("U_GPU[%d][%d] = %f\n", tid, i, U_GPU[deref(tid, i, numClusters)]);
-        }
+        // for(int i = 0; i < numClusters && tid == 0; i += blockDim.y){
+        //     if(! isnan(U_GPU[deref(tid, i, numClusters)]) )
+        //       printf("U_GPU[%d][%d] = %f\n", tid, i, U_GPU[deref(tid, i, numClusters)]);
+        // }
 
     }
 }
