@@ -2,6 +2,7 @@ import operator
 import os
 import time
 import random
+import math
 import numpy.linalg as la
 #import matplotlib.pyplot as plt
 import numpy as np
@@ -85,6 +86,11 @@ def PrintMemberships(Centroids, MembershipMatrix, DataMatrix):
     print "Key: "
     for v, centroid in enumerate(Centroids):
         print "Cluster number: ", v, "Centroid: ", centroid, " "
+        count = 0
+        for item in MembershipMatrix:
+            if item[v] > .50:
+                count += 1
+        print "Number of items in cluster: ", count
 
 
 def GetRandomCentroids(DataMatrix, KClusters):
@@ -92,6 +98,7 @@ def GetRandomCentroids(DataMatrix, KClusters):
     Selection = [];
 
     for vect in range(0,KClusters):
+
         Selection = DataMatrix[random.randint(0,DataMatrix.shape[0]-1)]
         while any((Selection == Centroid).all() for Centroid in Centroids):
             Selection = DataMatrix[random.randint(0,DataMatrix.shape[0]-1)]
@@ -115,12 +122,9 @@ def GetHMatrix(DataMatrix, H, S, V):
         for k, centroid in enumerate(V):
             H[i][k] = S[i][k] * ( la.norm(np.subtract(row, centroid)) ** 2)
 
-            # if i == 0 and k == 0:
-            #      print H[i][k], S[i][k]
-
 
 #@profile
-def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centroids_GPU, V, MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod):
+def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centroids_GPU, V, MembershipMatrix_GPU, MembershipMatrix, RegParam, mod):
 
     build_h_matrix = mod.get_function("build_h_matrix");
     call_solver = mod.get_function("update_membership_matrix");
@@ -154,19 +158,11 @@ def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centr
 
     H_Flat = np.reshape(H_Flat, H.shape)
 
-    # for i, line in enumerate(H_Flat):
-    #     if i == 0:
-    #         print line, "From GPU"
-    #         print H[i], "~~From CPU~~"
 
 
     """Do some quick maths to determine the numer of blocks needed"""
     """We will oprimize this part in the future because it causes problems
     with  warp effiency, There are a dozen+ warps which are running uselessly :/"""
-    BlockX = NumRows/TPB
-
-    while BlockX * TPB < NumRows:
-         BlockX += 1
 
     call_solver(MembershipMatrix_GPU, H_GPU, StrictRegParam, NumCentroids, NumRows, block=(1,1,1), grid=(DataMatrix.shape[0],1))
     # call_solver(drv.Out(MM_Flat), MembershipMatrix_GPU, H_GPU, StrictRegParam, NumCentroids, NumRows, block=(1,1,1), grid=(DataMatrix.shape[0],1)) #TPB cannot exceed 256
@@ -261,7 +257,9 @@ def FindCentroids( DataMatrix, V, S, U):
 # Parameter 4: ThresholdValue [float] : Controls the number of outliers.  If the residual of a sample to centroid is larger than <ThresholdValue>,
 #                                       it is re-garded as outlier and not used to learn centroid matrix V since the corresponding s_ik is zero"
 
-def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB):
+def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory):
+
+
     #variables
     Centroids = np.empty([KClusters, DataMatrix.shape[1]], dtype=float) #corresponds to V in paper
     MembershipMatrix = np.empty([DataMatrix.shape[0], KClusters], dtype=float) #should be of shape i rows and k columns; corresponds to U in paper
@@ -329,8 +327,6 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
     Centroids = GetRandomCentroids(DataMatrix, KClusters)
 
-
-
     drv.memcpy_htod(MembershipMatrix_GPU, MembershipMatrix.flatten().astype(np.float64))
     drv.memcpy_htod(Centroids_GPU, Centroids.flatten().astype(np.float64))
 
@@ -339,11 +335,9 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 #CORE PROCESSING LOOP! ----------------------------------
 
     while not Convergence(OldCentrioids, Centroids, TimeStep):
-
-
         OldCentrioids = np.copy(Centroids)
 
-        UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, AUX_GPU, MatrixH, S_GPU, S, Centroids_GPU, Centroids,  MembershipMatrix_GPU, MembershipMatrix, RegParam, TPB, mod)
+        UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, AUX_GPU, MatrixH, S_GPU, S, Centroids_GPU, Centroids,  MembershipMatrix_GPU, MembershipMatrix, RegParam, mod)
 
 
         #going to use H matrix as a scalar buffer to save on space
@@ -370,8 +364,6 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
         Centroids = np.reshape(Centroids_Host, Centroids.shape)
 
 
-
-
         print TimeStep
 
         TimeStep += 1
@@ -385,10 +377,6 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
 
 
-    # for line in MembershipMatrix:
-    #     print sum(line)
-
-
     #PrintMemberships(Centroids, MembershipMatrix, DataMatrix)
 #        RenderMemberships(DataMatrix, Centroids, MembershipMatrix, TimeStep, OutputDirectory)
 
@@ -398,16 +386,72 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory , TPB
 
 
 
-def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue):
-    comparision_vect = []
+def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory, MissingPercent):
+    NumRows = DataMatrix.shape[0]
+    NumCols = DataMatrix.shape[1]
+
+    NumMissing = int(DataMatrix.shape[0]*MissingPercent)
+
+    ComparisionVect = []
+    ExistingValues = []
+    ClusterMapping = np.zeros((DataMatrix.shape[0]), dtype=int)
+    ImputableDataValues = []
+
+    for i in range(KClusters):
+        ImputableDataValues.append({"NumValues":0,"Sum":0.0})
 
     #strip away the first feature from n rows and store for later
     for row in DataMatrix:
-        comparision_vect.append(row[0])
+        ComparisionVect.append(row[0])
+
+    for i in range(0, int(DataMatrix.shape[0])):
+        if(i > NumMissing):
+            ExistingValues.append(ComparisionVect[i])
+        else:
+            ExistingValues.append(float('nan'))
+
 
     #perform clustering using all data but only using n-1 features
+    DataMatrix = np.delete(DataMatrix, 0, axis=1)
+
+    start = time.time()
+    UVBundle = RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory)
+    end = time.time()
+
+
 
     #take returned U and V and find the geo average for feature 1 in cluster v^i and use that as our imputed Data
+    #Load 15 clusters with sums of exising data
+    for i, line in enumerate(UVBundle["U"]):
+        for k, centroid in enumerate(UVBundle["V"]):
+            if line[k] > .5:
+                ClusterMapping[i] = k
+            if line[k] > .5 and not math.isnan(ExistingValues[i]):
+                ImputableDataValues[k]["NumValues"] += 1
+                ImputableDataValues[k]["Sum"] += ExistingValues[i]
 
-    #compare accuracy of imputed value and real value
-    return
+    for item in ImputableDataValues:
+        if item["NumValues"] > 0:
+            item["Avg"] = item["Sum"]/item["NumValues"]
+
+    for value in ImputableDataValues:
+        print value
+
+    #impute data
+    for i, value in enumerate(ExistingValues):
+        if math.isnan(value):
+            #find imputable data point from imputable data values (derefrenced via cluster mapping)
+            ExistingValues[i] = ImputableDataValues[ClusterMapping[i]]["Avg"]
+            #print "Guess:", ExistingValues[i], " vs. Real: ", ComparisionVect[i]
+
+
+    sum = 0
+    for i in range(NumMissing):
+        sum += ((ExistingValues[i] - ComparisionVect[i]) ** 2)
+
+    RSME = math.sqrt(sum/NumMissing)
+
+    print "RSME: ", RSME
+    print "{},{},{},{},{},{}".format( UVBundle["Iter"], NumRows, NumCols, KClusters, ((end - start)*1000), ((end - start)*1000)/UVBundle["Iter"])
+
+    return UVBundle;

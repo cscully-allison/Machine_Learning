@@ -6,7 +6,7 @@ import numpy as np
 import random
 import sys
 from KM import KM
-from RSFKM_PAR import RSFKM, RenderMemberships, PrintMemberships
+from RSFKM_PAR import RSFKM, RenderMemberships, PrintMemberships, ImputeData
 
 
 """Collect command-line options in a dictionary"""
@@ -67,7 +67,7 @@ def main():
     DTColFlag = int(Args["-l"])
     NumRows = int(Args["-rw"])
     NumCols =  int(Args["-c"])
-    NumThreads = int(Args["--Threads"])
+    MissingPercent = float(Args["-P"])
 
     Data = ReadInData(DataSource, DTColFlag, NumRows, NumCols)
     DataValues = Data["DataFrame"]
@@ -76,11 +76,8 @@ def main():
 
     #Main Driver of RSFKM (ROBUST AND SPARSE FUZZY K MEANS)
 
-    start = time.time()
-    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, NumThreads)
-    end = time.time()
+    UVBundle = ImputeData(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, MissingPercent)
 
-    print "{},{},{},{},{},{},{},{}".format( UVBundle["Iter"], NumRows, NumCols, NumClusters, ((end - start)*1000), ((end - start)*1000)/UVBundle["Iter"], NumThreads, NumThreads * NumClusters)
 
 
     MembershipMatrix = UVBundle["U"]
