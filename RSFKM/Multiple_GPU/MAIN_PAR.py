@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 import time
 import operator
-import csv
-import numpy as np
-import random
 import sys
-from KM import KM
-from RSFKM_PAR import RSFKM, RenderMemberships, PrintMemberships, ImputeData
+import Queue
+
+from threading import Thread
+
+import numpy as np
+import pycuda.driver as drv
+from RSFKM_PAR import threadedRSFKM, ReadInData
 
 
 """Collect command-line options in a dictionary"""
@@ -20,36 +22,12 @@ def getopts(argv):
     return opts
 
 
-def ReadInData(source, DTColFlag, NumRows, NumCols):
-    TextValues = [] #row major matrix representing the set of all data points we will be grouping
-    FloatValues = []
-    DtMappings = [] #mappings of date time values to thier associated row of data in the object set
-
-    with open(source, 'rt') as csvfile:
-        reader = csv.reader(csvfile)
-        for i, row in enumerate(reader):
-            if i >= NumRows:
-                break
-            if len(row) < NumCols+1:
-                NumCols = len(row)
-            if '' not in row: #throw out rows with missing data
-                if DTColFlag is 1:
-                    DtMappings.append(row[0])
-                    TextValues.append(row[1:NumCols+1])
-                else:
-                    TextValues.append(row)
-
-
-
-    TextValues = np.array(TextValues)
-    FloatValues = TextValues.astype(np.float32)
-
-    return {"DTMappings": DtMappings, "DataFrame": FloatValues}
-
-
 
 
 def main():
+
+    print "get here?\n"
+
     Data = None
     DataValues = None
     UVBundle = None
@@ -69,19 +47,51 @@ def main():
     NumCols =  int(Args["-c"])
     MissingPercent = float(Args["-P"])
 
-    Data = ReadInData(DataSource, DTColFlag, NumRows, NumCols)
-    DataValues = Data["DataFrame"]
+    queue = Queue.Queue()
+    Threads = []
+    Returns = []
 
-    #UVBundle = RSFKM(DataValues, 15, 8, 20, OutputDirectory)
+    print "get here?\n"
+
+
+    MeasurementData = ReadInData(DataSource, DTColFlag, NumRows, NumCols)
+
+    print "Get here?"
+
+    #We need to call this on n threads and pass in a device ID
+    print drv.Device.count()
+
+    for DID in range(drv.Device.count()):
+        #call our threaded function and pass all relevant data as a "struct"
+        Threads.append(Thread( target=threadedRSFKM, args=({"DID": DID, "DataSource":DataSource, "DTColFlag":DTColFlag, "NumRows":NumRows, "NumCols":NumCols, "NumClusters": NumClusters, "RegParam": RegParam, "ThresholdValue":ThresholdValue, "OutputDirectory": OutputDirectory, "MissingPercent": MissingPercent, "MeasurementData":MeasurementData} , queue) ))
+
+    for thread in Threads:
+        thread.start()
+
+    for thread in Threads:
+        thread.join()
+
+    while not queue.empty():
+         Returns.append(queue.get())
+
+    for gpu, data in enumerate(Returns):
+        print "GPU:", data["DID"], data["RSME"], data["Output"]
+
+    print "Happens last right!?"
+
+
+
+
+
+
 
     #Main Driver of RSFKM (ROBUST AND SPARSE FUZZY K MEANS)
-
-    UVBundle = ImputeData(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, MissingPercent)
-
+    # UVBundle = ImputeData(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, MissingPercent)
 
 
-    MembershipMatrix = UVBundle["U"]
-    Centroids = UVBundle["V"]
+
+    # MembershipMatrix = UVBundle["U"]
+    # Centroids = UVBundle["V"]
 
     #print MembershipMatrix
     #print Centroids
