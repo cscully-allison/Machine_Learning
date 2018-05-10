@@ -18,7 +18,7 @@ from cvxpy import *
 
 MAX_ITERATIONS = 100 #greater than 30 iterations tends to not give more clear resolution
 
-
+#randomly samples a number of rows from our total record size
 def ReadInData(source, DTColFlag, NumRows, NumCols):
     TextValues = [] #row major matrix representing the set of all data points we will be grouping
     FloatValues = []
@@ -29,10 +29,13 @@ def ReadInData(source, DTColFlag, NumRows, NumCols):
 
     skip = sorted(random.sample(xrange(NumRecords),NumRecords-NumRows))
     df = pandas.read_csv(source, skiprows=skip)
+    df = df.dropna(axis=0, how="any")
 
     FloatValues = df.as_matrix()
 
-    print FloatValues
+    FloatValues = np.delete(FloatValues, 0, axis=1).astype(np.float64)
+    FloatValues = np.delete(FloatValues, slice(11,29), axis=1).astype(np.float64)
+
 
 
     #
@@ -41,23 +44,6 @@ def ReadInData(source, DTColFlag, NumRows, NumCols):
 
     return {"DataFrame": FloatValues}
 
-
-
-def RandomSampleData(MeasurementData, NumRows):
-    Measurements = []
-
-    for vect in range(0,NumRows):
-        Selection = MeasurementData["DataFrame"][random.randint(0,MeasurementData["DataFrame"].shape[0]-1)]
-        while any((Selection == Measurement).all() for Measurement in Measurements):
-            Selection = MeasurementData["DataFrame"][random.randint(0,MeasurementData["DataFrame"].shape[0]-1)]
-
-        Measurements.append(Selection)
-
-    Measurements = np.array(Measurements)
-
-    MeasurementData["DataFrame"] = Measurements
-
-    return MeasurementData
 
 
 def PrintMemberships(Centroids, MembershipMatrix, DataMatrix):
@@ -373,17 +359,19 @@ def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory,
     for item in ImputableDataValues:
         if item["NumValues"] > 0:
             item["Avg"] = item["Sum"]/item["NumValues"]
+        else:
+             item["Avg"] = float('nan')
+
 
     # for value in ImputableDataValues:
     #     print value
 
     #impute data
-    for i, value in enumerate(ExistingValues):
-        if math.isnan(value):
-            #find imputable data point from imputable data values (derefrenced via cluster mapping)
-            ExistingValues[i] = ImputableDataValues[ClusterMapping[i]]["Avg"]
-            GuessedValues[i] = ImputableDataValues[ClusterMapping[i]]["Avg"]
-            #print "Guess:", ExistingValues[i], " vs. Real: ", ComparisionVect[i]
+    for i, value in enumerate(GuessedValues):
+        #find imputable data point from imputable data values (derefrenced via cluster mapping)
+        ExistingValues[i] = ImputableDataValues[ClusterMapping[i]]["Avg"]
+        GuessedValues[i] = ImputableDataValues[ClusterMapping[i]]["Avg"]
+        #print "Guess:", ExistingValues[i], " vs. Real: ", ComparisionVect[i]
 
 
     sum = 0
@@ -412,7 +400,8 @@ def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory,
 def threadedRSFKM(DataBundle, queue):
 
     #randomly sample data points
-    Data = RandomSampleData(DataBundle["MeasurementData"], DataBundle["NumRows"])
+    Data = ReadInData(DataBundle["DataSource"], DataBundle["DTColFlag"], DataBundle["NumRows"], DataBundle["NumCols"])
+
     DataValues = Data["DataFrame"]
 
 

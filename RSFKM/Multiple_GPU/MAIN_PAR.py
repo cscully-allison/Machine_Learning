@@ -51,33 +51,29 @@ def main():
     Threads = []
     Returns = []
 
-    print "get here?\n"
-
-
-    MeasurementData = ReadInData(DataSource, DTColFlag, NumRows, NumCols)
-
-    print "Get here?"
-
-    #We need to call this on n threads and pass in a device ID
+    #
+    # #We need to call this on n threads and pass in a device ID
     print drv.Device.count()
-
+    #
     for DID in range(drv.Device.count()):
-        #call our threaded function and pass all relevant data as a "struct"
-        Threads.append(Thread( target=threadedRSFKM, args=({"DID": DID, "DataSource":DataSource, "DTColFlag":DTColFlag, "NumRows":NumRows, "NumCols":NumCols, "NumClusters": NumClusters, "RegParam": RegParam, "ThresholdValue":ThresholdValue, "OutputDirectory": OutputDirectory, "MissingPercent": MissingPercent, "MeasurementData":MeasurementData} , queue) ))
-
+    #     #call our threaded function and pass all relevant data as a "struct"
+          Threads.append(Thread( target=threadedRSFKM, args=({"DID": DID, "DataSource":DataSource, "DTColFlag":DTColFlag, "NumRows":NumRows, "NumCols":NumCols, "NumClusters": NumClusters, "RegParam": RegParam, "ThresholdValue":ThresholdValue, "OutputDirectory": OutputDirectory, "MissingPercent": MissingPercent} , queue) ))
+    #
     for thread in Threads:
         thread.start()
-
+    #
     for thread in Threads:
         thread.join()
-
+    #
     while not queue.empty():
          Returns.append(queue.get())
-
+    #
     for gpu, data in enumerate(Returns):
         print "GPU:", data["DID"], data["RSME"], data["Output"]
-
-    print "Happens last right!?"
+        # for i, value in enumerate(data["GuessedValues"]):
+        #     print "Guess:", data["GuessedValues"][i], " vs. Real: ", data["GroundTruths"][i]
+    #
+    # print "Happens last right!?"
 
 
 
