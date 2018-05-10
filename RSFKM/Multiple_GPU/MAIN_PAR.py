@@ -25,12 +25,9 @@ def getopts(argv):
 
 
 def main():
-
-    print "get here?\n"
-
     Data = None
     DataValues = None
-    UVBundle = None
+    data = None
     MembershipMatrix = None
     Centroids = None
 
@@ -50,49 +47,44 @@ def main():
     queue = Queue.Queue()
     Threads = []
     Returns = []
+    TimeAVG = 0.0
+    TimePerIterAVG = 0.0
+    IterAVG = 0
+    RSMEAVG = 0.0
 
     #
     # #We need to call this on n threads and pass in a device ID
-    print drv.Device.count()
-    #
     for DID in range(drv.Device.count()):
-    #     #call our threaded function and pass all relevant data as a "struct"
-          Threads.append(Thread( target=threadedRSFKM, args=({"DID": DID, "DataSource":DataSource, "DTColFlag":DTColFlag, "NumRows":NumRows, "NumCols":NumCols, "NumClusters": NumClusters, "RegParam": RegParam, "ThresholdValue":ThresholdValue, "OutputDirectory": OutputDirectory, "MissingPercent": MissingPercent} , queue) ))
-    #
+        #call our threaded function and pass all relevant data as a "struct"
+        Threads.append(Thread( target=threadedRSFKM, args=({"DID": DID, "DataSource":DataSource, "DTColFlag":DTColFlag, "NumRows":NumRows, "NumCols":NumCols, "NumClusters": NumClusters, "RegParam": RegParam, "ThresholdValue":ThresholdValue, "OutputDirectory": OutputDirectory, "MissingPercent": MissingPercent} , queue) ))
+
     for thread in Threads:
         thread.start()
-    #
+
     for thread in Threads:
         thread.join()
-    #
+
     while not queue.empty():
          Returns.append(queue.get())
-    #
+
     for gpu, data in enumerate(Returns):
-        print "GPU:", data["DID"], data["RSME"], data["Output"]
+        TimeAVG += data["Time(ms)"]
+        TimePerIterAVG += data["Time(ms)"]/data["Iter"]
+        IterAVG += data["Iter"]
+        RSMEAVG += data["RSME"]
+
+        # print "GPU:", data["DID"], data["RSME"]
         # for i, value in enumerate(data["GuessedValues"]):
         #     print "Guess:", data["GuessedValues"][i], " vs. Real: ", data["GroundTruths"][i]
-    #
-    # print "Happens last right!?"
+
+    TimeAVG = TimeAVG/drv.Device.count()
+    TimePerIterAVG = TimePerIterAVG/drv.Device.count()
+    IterAVG = IterAVG/drv.Device.count()
+    RSMEAVG = RSMEAVG/drv.Device.count()
+
+    print "{},{},{},{},{},{},{},{},{}".format(drv.Device.count(), IterAVG, NumRows, NumRows*drv.Device.count(), NumCols, NumClusters,RSMEAVG, TimeAVG, TimePerIterAVG)
 
 
-
-
-
-
-
-    #Main Driver of RSFKM (ROBUST AND SPARSE FUZZY K MEANS)
-    # UVBundle = ImputeData(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, MissingPercent)
-
-
-
-    # MembershipMatrix = UVBundle["U"]
-    # Centroids = UVBundle["V"]
-
-    #print MembershipMatrix
-    #print Centroids
-    #PrintMemberships(Centroids,MembershipMatrix,DataValues)
-    #RenderMemberships(DataValues, Centroids, MembershipMatrix, 0, OutputDirectory)
 
 
 

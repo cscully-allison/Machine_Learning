@@ -25,7 +25,6 @@ def ReadInData(source, DTColFlag, NumRows, NumCols):
     DtMappings = [] #mappings of date time values to thier associated row of data in the object set
     NumRecords = 40000
 
-    print NumRecords
 
     skip = sorted(random.sample(xrange(NumRecords),NumRecords-NumRows))
     df = pandas.read_csv(source, skiprows=skip)
@@ -35,11 +34,6 @@ def ReadInData(source, DTColFlag, NumRows, NumCols):
 
     FloatValues = np.delete(FloatValues, 0, axis=1).astype(np.float64)
     FloatValues = np.delete(FloatValues, slice(11,29), axis=1).astype(np.float64)
-
-
-
-    #
-    # FloatValues = np.array(TextValues).astype(np.float64)
 
 
     return {"DataFrame": FloatValues}
@@ -121,7 +115,6 @@ def UpdateMembershipMatrix(DataMatrix_GPU, DataMatrix, H_GPU, H, S_GPU, S, Centr
     drv.memcpy_dtoh(H_Flat, H_GPU)
 
     H_Flat = np.reshape(H_Flat, H.shape)
-
 
 
     """Do some quick maths to determine the numer of blocks needed"""
@@ -291,9 +284,6 @@ def RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory, cont
         drv.memcpy_dtoh(Centroids_Host, Centroids_GPU)
         Centroids = np.reshape(Centroids_Host, Centroids.shape)
 
-
-        print TimeStep
-
         TimeStep += 1
 
 
@@ -341,9 +331,9 @@ def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory,
     #perform clustering using all data but only using n-1 features
     DataMatrix = np.delete(DataMatrix, 0, axis=1)
 
-    start = time.time()
+
     UVBundle = RSFKM(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory, context)
-    end = time.time()
+
 
 
     #take returned U and V and find the geo average for feature 1 in cluster v^i and use that as our imputed Data
@@ -380,8 +370,6 @@ def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory,
 
     RSME = math.sqrt(sum/NumMissing)
 
-    print "RSME: ", RSME
-    UVBundle["Output"] = "{},{},{},{},{},{}".format( UVBundle["Iter"], NumRows, NumCols, KClusters, ((end - start)*1000), ((end - start)*1000)/UVBundle["Iter"])
 
 
     UVBundle["GuessedValues"] = GuessedValues
@@ -409,13 +397,20 @@ def threadedRSFKM(DataBundle, queue):
     context = drv.Device(DataBundle["DID"]).make_context()
 
     #call ImputeData
+    start = time.time()
     UVBundle = ImputeData(DataValues, DataBundle["NumClusters"], DataBundle["RegParam"], DataBundle["ThresholdValue"], DataBundle["OutputDirectory"], DataBundle["MissingPercent"], context)
     UVBundle["DID"] = DataBundle["DID"]
+    end = time.time()
 
 
     #wait for all devices to return
     context.synchronize()
     context.pop()
+
+    UVBundle["Time(s)"] = (end-start)
+    UVBundle["Time(ms)"] =  ((end - start)*1000)
+
+
 
     queue.put(UVBundle)
 
