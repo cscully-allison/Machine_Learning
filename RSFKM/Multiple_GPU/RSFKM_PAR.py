@@ -309,7 +309,7 @@ def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory,
 
     ComparisionVect = []
     ExistingValues = []
-    GuessedValues = np.zeros((NumMissing+1))
+    GuessedValues = np.zeros((NumMissing))
     ClusterMapping = np.zeros((DataMatrix.shape[0]), dtype=int)
     ImputableDataValues = []
 
@@ -318,14 +318,11 @@ def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory,
         ImputableDataValues.append({"NumValues":0,"Sum":0.0})
 
     #strip away the first feature from n rows and store for later
-    for row in DataMatrix:
-        ComparisionVect.append(row[0])
+    for i, row in enumerate(DataMatrix):
+        ExistingValues.append(row[0])
+        if i < NumMissing:
+            ComparisionVect.append(row[0])
 
-    for i in range(0, int(DataMatrix.shape[0])):
-        if(i > NumMissing):
-            ExistingValues.append(ComparisionVect[i])
-        else:
-            ExistingValues.append(float('nan'))
 
 
     #perform clustering using all data but only using n-1 features
@@ -359,16 +356,25 @@ def ImputeData(DataMatrix, KClusters, RegParam, ThresholdValue, OutputDirectory,
     #impute data
     for i, value in enumerate(GuessedValues):
         #find imputable data point from imputable data values (derefrenced via cluster mapping)
-        ExistingValues[i] = ImputableDataValues[ClusterMapping[i]]["Avg"]
         GuessedValues[i] = ImputableDataValues[ClusterMapping[i]]["Avg"]
         #print "Guess:", ExistingValues[i], " vs. Real: ", ComparisionVect[i]
 
 
-    sum = 0
-    for i in range(NumMissing):
-        sum += ((ExistingValues[i] - ComparisionVect[i]) ** 2)
+    NormGuessedValues = GuessedValues/la.norm(GuessedValues)
+    NormComparisionVect = ComparisionVect/la.norm(ComparisionVect)
 
-    RSME = math.sqrt(sum/NumMissing)
+    RSME = np.sqrt(np.mean((GuessedValues-ComparisionVect)**2))
+
+    # sum = 0
+    # count = 0
+    # # for i in range(NumMissing):
+    # #     if not math.isnan(((GuessedValues[i] - ComparisionVect[i]) ** 2)):
+    # #         sum += ((GuessedValues[i] - ComparisionVect[i]) ** 2)
+    # #         count += 1
+    # #
+    # # print len(GuessedValues), len(ComparisionVect)
+    # # print count
+    # # RSME = math.sqrt(sum/(count))
 
 
 

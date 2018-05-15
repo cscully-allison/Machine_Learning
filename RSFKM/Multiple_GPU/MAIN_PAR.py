@@ -3,6 +3,7 @@ import time
 import operator
 import sys
 import Queue
+import math
 
 from threading import Thread
 
@@ -51,6 +52,7 @@ def main():
     TimePerIterAVG = 0.0
     IterAVG = 0
     RSMEAVG = 0.0
+    RSMECount = 0
 
     #
     # #We need to call this on n threads and pass in a device ID
@@ -71,7 +73,11 @@ def main():
         TimeAVG += data["Time(ms)"]
         TimePerIterAVG += data["Time(ms)"]/data["Iter"]
         IterAVG += data["Iter"]
-        RSMEAVG += data["RSME"]
+
+    for data in Returns:
+        if not math.isnan(data["RSME"]):
+            RSMEAVG += data["RSME"]
+            RSMECount += 1
 
         # print "GPU:", data["DID"], data["RSME"]
         # for i, value in enumerate(data["GuessedValues"]):
@@ -80,9 +86,9 @@ def main():
     TimeAVG = TimeAVG/drv.Device.count()
     TimePerIterAVG = TimePerIterAVG/drv.Device.count()
     IterAVG = IterAVG/drv.Device.count()
-    RSMEAVG = RSMEAVG/drv.Device.count()
+    RSMEAVG = RSMEAVG/RSMECount
 
-    print "{},{},{},{},{},{},{},{},{}".format(drv.Device.count(), IterAVG, NumRows, NumRows*drv.Device.count(), NumCols, NumClusters,RSMEAVG, TimeAVG, TimePerIterAVG)
+    print "{},{},{},{},{},{},{},{},{}".format(drv.Device.count(), IterAVG, NumRows, NumRows*drv.Device.count(), NumCols, NumClusters, RSMEAVG, TimeAVG, TimePerIterAVG)
 
 
 

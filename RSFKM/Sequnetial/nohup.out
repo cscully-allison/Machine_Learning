@@ -1,0 +1,318 @@
+Error in atexit._run_exitfuncs:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/atexit.py", line 24, in _run_exitfuncs
+    func(*targs, **kargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/pycuda/autoinit.py", line 15, in _finish_up
+    context = None
+KeyboardInterrupt
+Error in sys.exitfunc:
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/atexit.py", line 24, in _run_exitfuncs
+    func(*targs, **kargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/pycuda/autoinit.py", line 15, in _finish_up
+    context = None
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
+Traceback (most recent call last):
+  File "./MAIN.py", line 100, in <module>
+    main();
+  File "./MAIN.py", line 83, in main
+    UVBundle = RSFKM(DataValues, NumClusters, RegParam, ThresholdValue, OutputDirectory, GeneralSovler)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 289, in RSFKM
+    UpdateMembershipMatrix(DataMatrix, MatrixH, S, Centroids, MembershipMatrix, RegParam, GeneralSolver)
+  File "/cse/home/cscully/Machine_Learning/RSFKM/Sequnetial/RSFKM.py", line 140, in UpdateMembershipMatrix
+    prob.solve(solver=ECOS)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 209, in solve
+    return self._solve(*args, **kwargs)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 335, in _solve
+    self._update_problem_state(results_dict, sym_data, solver)
+  File "/cse/home/cscully/PyEnv/local/lib/python2.7/site-packages/cvxpy/problems/problem.py", line 447, in _update_problem_state
+    "Solver '%s' failed. Try another solver." % solver.name())
+cvxpy.error.SolverError: Solver 'ECOS' failed. Try another solver.
